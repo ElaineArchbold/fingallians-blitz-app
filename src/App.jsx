@@ -144,6 +144,12 @@ const MENTOR_BURGER_NOTE = "Every registered player and mentor gets a voucher on
 // TEMPORARY placeholder price — update once the real price per sausage bap is confirmed.
 const SAUSAGE_BAP_PRICE = 2;
 
+// TENTATIVE — confirm the real cutoff date. Orders lock at the end of this day.
+const ORDER_LOCK_DATE = new Date("2026-08-19T23:59:59");
+function ordersAreLocked() {
+  return new Date() > ORDER_LOCK_DATE;
+}
+
 /* ---------- Storage helpers (Turso via /api/kv) ---------- */
 const API_BASE = "/api/kv";
 
@@ -1556,22 +1562,29 @@ function InfoScreen({ sponsors, announcements }) {
 }
 
 /* ---------- Food ordering (coach view) ---------- */
-function Stepper({ label, value, onChange, sub }) {
+function Stepper({ label, value, onChange, sub, disabled, onLockedTap }) {
+  const handleChange = (v) => {
+    if (disabled) {
+      onLockedTap && onLockedTap();
+      return;
+    }
+    onChange(v);
+  };
   return (
-    <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
+    <div style={{ background: disabled ? C.line : "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10, opacity: disabled ? 0.75 : 1 }}>
       <div style={{ fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: C.ink }}>{label}</div>
       {sub && <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginTop: 2 }}>{sub}</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10 }}>
         <button
-          onClick={() => onChange(Math.max(0, value - 1))}
+          onClick={() => handleChange(Math.max(0, value - 1))}
           style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${C.pitch}33`, background: C.line, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <Minus size={18} color={C.pitch} />
         </button>
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 22, minWidth: 34, textAlign: "center", color: C.ink }}>{value}</div>
         <button
-          onClick={() => onChange(value + 1)}
-          style={{ width: 40, height: 40, borderRadius: 10, border: "none", background: C.pitch, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => handleChange(value + 1)}
+          style={{ width: 40, height: 40, borderRadius: 10, border: "none", background: disabled ? C.ash : C.pitch, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <Plus size={18} color="#fff" />
         </button>
@@ -1588,6 +1601,8 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
   const [passcode, setPasscode] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [showPasscode, setShowPasscode] = useState(false);
+  const [showLockedModal, setShowLockedModal] = useState(false);
+  const locked = ordersAreLocked();
 
   useEffect(() => {
     setAuthedClub(false);
@@ -1721,27 +1736,38 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: "#E9DAD0", marginTop: 8, lineHeight: 1.5 }}>{MENTOR_BURGER_NOTE}</div>
         </div>
 
+        {locked && (
+          <div style={{ background: "#fff", border: `2px solid ${C.pitch}`, borderRadius: 12, padding: 12, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            <Lock size={18} color={C.pitch} style={{ flexShrink: 0 }} />
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink, lineHeight: 1.4 }}>
+              <b>Orders closed on 19 August.</b> This shows your submitted order — contact the organisers if you need to change it.
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <input
             placeholder="Contact name"
             value={order?.contactName || ""}
-            onChange={(e) => set("contactName", e.target.value)}
-            style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 14 }}
+            onChange={(e) => (locked ? setShowLockedModal(true) : set("contactName", e.target.value))}
+            readOnly={locked}
+            style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 14, background: locked ? C.line : "#fff" }}
           />
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <input
             placeholder="Mobile number"
             value={order?.mobile || ""}
-            onChange={(e) => set("mobile", e.target.value)}
-            style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 14 }}
+            onChange={(e) => (locked ? setShowLockedModal(true) : set("mobile", e.target.value))}
+            readOnly={locked}
+            style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 14, background: locked ? C.line : "#fff" }}
           />
         </div>
 
-        <Stepper label="Players" value={order?.players || 0} onChange={(v) => set("players", v)} />
-        <Stepper label="Mentors" value={order?.mentors || 0} onChange={(v) => set("mentors", v)} />
-        <Stepper label="Breakfast Banger (sausage in a bun)" value={order?.sausageRolls || 0} onChange={(v) => set("sausageRolls", v)} sub={`Breakfast, ready on arrival — €${SAUSAGE_BAP_PRICE.toFixed(2)} each, paid on the day`} />
-        <Stepper label="Beef burger headcount" value={order?.burgers || 0} onChange={(v) => set("burgers", v)} sub="Lunch — 1 per child/mentor, included by voucher" />
+        <Stepper label="Players" value={order?.players || 0} onChange={(v) => set("players", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Mentors" value={order?.mentors || 0} onChange={(v) => set("mentors", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Breakfast Banger (sausage in a bun)" value={order?.sausageRolls || 0} onChange={(v) => set("sausageRolls", v)} sub={`Breakfast, ready on arrival — €${SAUSAGE_BAP_PRICE.toFixed(2)} each, paid on the day`} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Beef burger headcount" value={order?.burgers || 0} onChange={(v) => set("burgers", v)} sub="Lunch — 1 per child/mentor, included by voucher" disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
 
         <div style={{ background: C.line, border: `1px solid ${C.ash}55`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1769,12 +1795,16 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
 
         <button
           onClick={async () => {
+            if (locked) {
+              setShowLockedModal(true);
+              return;
+            }
             await saveOrder(clubId, order);
             setSaved(true);
           }}
           style={{
             width: "100%",
-            background: C.sliotar,
+            background: locked ? C.ash : C.sliotar,
             color: C.ink,
             border: "none",
             borderRadius: 30,
@@ -1784,12 +1814,38 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
             fontSize: 16,
             letterSpacing: 0.5,
             cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(238,180,59,0.4)",
+            boxShadow: locked ? "none" : "0 4px 12px rgba(238,180,59,0.4)",
           }}
         >
-          Save order
+          {locked ? "Orders closed" : "Save order"}
         </button>
       </div>
+
+      {showLockedModal && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(20,17,16,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={() => setShowLockedModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 18, padding: "26px 22px", maxWidth: 320, width: "100%", textAlign: "center", border: `3px solid ${C.sliotar}` }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 8 }}>🔒</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 15, color: C.pitch, marginBottom: 10 }}>
+              Orders are closed
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 14, color: C.ink, lineHeight: 1.5, marginBottom: 20 }}>
+              Food orders closed on 19 August. If you need to change your order, please contact the organisers directly.
+            </div>
+            <button
+              onClick={() => setShowLockedModal(false)}
+              style={{ background: C.pitch, color: "#fff", border: "none", borderRadius: 30, padding: "11px 30px", fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2278,6 +2334,30 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 700, color: C.line }}>Total to collect ({totals.sausageRolls} Breakfast Bangers × €{SAUSAGE_BAP_PRICE.toFixed(2)})</span>
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 22, color: C.sliotar }}>€{(totals.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)}</span>
           </div>
+
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
+            Amount to collect, by club
+          </div>
+          <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+            {clubs
+              .map((t) => ({ team: t, order: orders[t.id] }))
+              .sort((a, b) => (b.order?.sausageRolls || 0) - (a.order?.sausageRolls || 0))
+              .map(({ team: t, order: o }) => {
+                const amount = (o?.sausageRolls || 0) * SAUSAGE_BAP_PRICE;
+                return (
+                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", borderTop: `1px solid ${C.pitch}14` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <TeamBadge team={t} size={24} />
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                    </div>
+                    <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: amount > 0 ? C.pitch : C.inkSoft, flexShrink: 0 }}>
+                      {o ? `€${amount.toFixed(2)}` : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
             Per club
           </div>
