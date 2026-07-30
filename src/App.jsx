@@ -106,7 +106,7 @@ const DEFAULT_SPONSORS = [
 // Named organiser logins — all have identical full access (fixtures, scores, all food orders,
 // announcements, sponsors). Add/remove people here; swap out passwords whenever you like.
 const ADMIN_ACCOUNTS = {
-  blitz2026: "Organiser",
+  blitz2026: "Mentor",
   elaine1884: "Elaine",
   Sean1884: "Sean",
   Dara1884: "Dara",
@@ -746,22 +746,6 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
 
       <div style={{ padding: "14px 16px 4px" }}>
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
-          Pitch Layout
-        </div>
-        <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 8 }}>
-          <img
-            src={`/pitch-layout.jpg?v=${CREST_VERSION}`}
-            alt="Pitch layout at Lawless Memorial Park — Pitch 1 on the all-weather surface, Pitches 2 and 3 on the main grass pitch"
-            style={{ width: "100%", height: "auto", borderRadius: 8, display: "block" }}
-          />
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>
-            Pitch 1 is on the all-weather surface. Pitches 2 and 3 are on the main grass pitch. The ball wall (for team photos) is marked top right.
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: "14px 16px 4px" }}>
-        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
           The 8 Clubs
         </div>
         <ClubsShowcase clubs={clubs} setScreen={setScreen} />
@@ -1296,7 +1280,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
   );
 }
 
-function InfoScreen({ sponsors }) {
+function InfoScreen({ sponsors, announcements }) {
   const items = [
     {
       title: "Arrival & registration",
@@ -1310,6 +1294,11 @@ function InfoScreen({ sponsors }) {
       title: "Parking & directions",
       body: "Limited car parking is available at Fingallians GAA, and buses are welcome to park on site. Overflow parking has been kindly provided by the HSE at Swords Business Campus, a short ten-minute walk from the grounds — stewards will be on duty at both locations to guide you.",
       map: true,
+    },
+    {
+      title: "Pitch Layout",
+      image: `/pitch-layout.jpg?v=${CREST_VERSION}`,
+      body: "Pitch 1 is on the all-weather surface. Pitches 2 and 3 are on the main grass pitch. The ball wall (for team photos) is marked top right.",
     },
     {
       title: "Facilities & medical",
@@ -1336,16 +1325,51 @@ function InfoScreen({ sponsors }) {
     },
     {
       title: "Communications",
-      body: "In the days leading up to the festival a lead-mentors WhatsApp group is set up. Any updates arising during the day are circulated through that group — and through the Announcements on the Today tab of this app.",
+      body: "In the days leading up to the festival a lead-mentors WhatsApp group is set up. Any updates arising during the day are circulated through that group, shown as a pop-up in the app, and listed at the top of this Info page.",
     },
   ];
   return (
     <div>
       <TopBar title="Event info" />
       <div style={{ padding: 16 }}>
+        {announcements && announcements.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
+              📢 Announcements
+            </div>
+            {announcements.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  background: "#fff",
+                  border: `1px solid ${C.ash}33`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  marginBottom: 8,
+                }}
+              >
+                <Megaphone size={16} color={C.sliotar} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.ink }}>{a.text}</div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, marginTop: 2 }}>{a.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {items.map((it) => (
           <div key={it.title} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
             <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink, marginBottom: 6 }}>{it.title}</div>
+            {it.image && (
+              <img
+                src={it.image}
+                alt={it.title}
+                style={{ width: "100%", height: "auto", borderRadius: 8, display: "block", marginBottom: it.body ? 8 : 0 }}
+              />
+            )}
             {it.body && <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>{it.body}</div>}
             {it.list && (
               <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
@@ -1941,11 +1965,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   if (!authed) {
     return (
       <div style={{ padding: 16 }}>
-        <TopBar title="Organiser login" />
+        <TopBar title="Mentor login" />
         <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Lock size={16} color={C.pitch} />
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft }}>Organisers only</span>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft }}>Mentors only</span>
           </div>
           <div style={{ position: "relative", marginBottom: 10 }}>
             <input
@@ -2030,7 +2054,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   return (
     <div style={{ paddingBottom: 20 }}>
       <TopBar
-        title="Organiser dashboard"
+        title="Mentor dashboard"
         right={
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>
             {adminName}
@@ -2467,6 +2491,160 @@ function MiniScoreInput({ label, value, onChange }) {
   );
 }
 
+function RefereeScreen({ teams, matches, setMatches, persist, logAction }) {
+  const [refName, setRefName] = useState(() => {
+    try {
+      return localStorage.getItem("refName") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [nameInput, setNameInput] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
+
+  if (!refName) {
+    return (
+      <div style={{ padding: 16 }}>
+        <TopBar title="Referee" />
+        <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Megaphone size={16} color={C.pitch} />
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft }}>Enter your name to record scores</span>
+          </div>
+          <input
+            placeholder="Your name"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", marginBottom: 10 }}
+          />
+          <button
+            onClick={() => {
+              const name = nameInput.trim();
+              if (!name) return;
+              try {
+                localStorage.setItem("refName", name);
+              } catch {}
+              setRefName(name);
+            }}
+            style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontFamily: "Inter, sans-serif", fontWeight: 700, cursor: "pointer" }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedId) {
+    const m = matches.find((x) => x.id === selectedId);
+    if (!m) {
+      setSelectedId(null);
+      return null;
+    }
+    const a = teamById(m.teamA);
+    const b = teamById(m.teamB);
+    return (
+      <div style={{ padding: 16 }}>
+        <TopBar title="Enter score" onBack={() => { setSelectedId(null); setSaved(false); }} />
+        <div style={{ marginTop: 16, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time}</span>
+            <PitchBadge pitch={m.pitch} />
+          </div>
+          <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 16, color: C.ink, marginBottom: 16 }}>
+            {a.name} <span style={{ color: C.inkSoft, fontWeight: 400 }}>v</span> {b.name}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink, minWidth: 90 }}>{a.name}</span>
+            <MiniScoreInput label="Goals" value={draft.goalsA} onChange={(v) => setDraft((d) => ({ ...d, goalsA: v }))} />
+            <MiniScoreInput label="Points" value={draft.pointsA} onChange={(v) => setDraft((d) => ({ ...d, pointsA: v }))} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink, minWidth: 90 }}>{b.name}</span>
+            <MiniScoreInput label="Goals" value={draft.goalsB} onChange={(v) => setDraft((d) => ({ ...d, goalsB: v }))} />
+            <MiniScoreInput label="Points" value={draft.pointsB} onChange={(v) => setDraft((d) => ({ ...d, pointsB: v }))} />
+          </div>
+
+          {saved && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.pitch, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+              <Check size={16} /> Score saved and match marked finished.
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              const next = matches.map((x) => (x.id === m.id ? { ...x, ...draft, status: "finished" } : x));
+              setMatches(next);
+              persist("matches", next);
+              logAction(`Referee: ${refName}`, `Entered final score for ${a.name} v ${b.name}: ${scoreLabel(draft.goalsA, draft.pointsA)} - ${scoreLabel(draft.goalsB, draft.pointsB)}`);
+              setSaved(true);
+            }}
+            style={{ width: "100%", background: C.sliotar, color: C.ink, border: "none", borderRadius: 30, padding: 14, fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
+          >
+            Save final score
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const sorted = [...matches].sort((x, y) => x.time.localeCompare(y.time));
+
+  return (
+    <div style={{ paddingBottom: 20 }}>
+      <TopBar title="Referee" right={<span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>{refName}</span>} />
+      <div style={{ padding: 16 }}>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginBottom: 12 }}>
+          Tap a match to enter its final score.
+        </div>
+        {sorted.length === 0 && (
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
+            No fixtures yet — check back once the organiser adds them.
+          </div>
+        )}
+        {sorted.map((m) => {
+          const a = teamById(m.teamA);
+          const b = teamById(m.teamB);
+          return (
+            <button
+              key={m.id}
+              onClick={() => {
+                setDraft({ goalsA: m.goalsA, pointsA: m.pointsA, goalsB: m.goalsB, pointsB: m.pointsB });
+                setSelectedId(m.id);
+                setSaved(false);
+              }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                background: "#fff",
+                border: `1px solid ${C.pitch}22`,
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 8,
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time}</span>
+                  <PitchBadge pitch={m.pitch} />
+                </div>
+                <StatusPill status={m.status} />
+              </div>
+              <MatchRow match={m} teamById={teamById} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function playAnnouncementDing() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2648,7 +2826,7 @@ export default function App() {
   else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} />;
   else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} />;
   else if (screen === "team") body = <TeamScreen teams={teams} clubs={clubs} matches={matches} orders={orders} saveOrder={saveOrder} sponsors={sponsors} myClub={myClub} myClubName={myClubObj?.name} onOpenWelcome={openWelcome} onChangeClub={changeClub} />;
-  else if (screen === "info") body = <InfoScreen sponsors={sponsors} />;
+  else if (screen === "info") body = <InfoScreen sponsors={sponsors} announcements={announcements} />;
   else if (screen === "admin")
     body = (
       <AdminScreen
@@ -2666,18 +2844,27 @@ export default function App() {
         logAction={logAction}
       />
     );
+  else if (screen === "referee")
+    body = <RefereeScreen teams={teams} matches={matches} setMatches={setMatches} persist={persist} logAction={logAction} />;
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.line, minHeight: "100dvh", display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif" }}>
       <style>{FONT_IMPORT}</style>
       <div style={{ flex: 1, overflowY: "auto" }}>{body}</div>
       <BottomNav screen={screen} setScreen={setScreen} />
-      <div style={{ textAlign: "center", padding: "6px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}` }}>
+      <div style={{ textAlign: "center", padding: "6px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 14 }}>
         <button
           onClick={() => setScreen("admin")}
           style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
         >
-          Organiser login
+          Mentor login
+        </button>
+        <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 10 }}>·</span>
+        <button
+          onClick={() => setScreen("referee")}
+          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
+        >
+          Referee
         </button>
       </div>
 
