@@ -23,7 +23,7 @@ const HERO_DARK = "#750712";
 
 // The ?v= tag forces browsers/CDN to re-fetch when a crest/logo image is updated —
 // bump this number any time an image file changes, otherwise cached copies can stick around.
-const CREST_VERSION = "5";
+const CREST_VERSION = "6";
 const BADGE_LOGO = `/logo.png?v=${CREST_VERSION}`;
 
 const CRESTS = {
