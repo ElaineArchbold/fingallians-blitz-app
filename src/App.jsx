@@ -13,7 +13,7 @@ const C = {
   inkSoft: "#6B5A52",
 };
 
-const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');`;
+const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');`;
 
 const BADGE_LOGO = "/logo.png";
 
@@ -171,7 +171,7 @@ function Scoreline({ goals, points, big }) {
         <div
           key={i}
           style={{
-            fontFamily: "Oswald, sans-serif",
+            fontFamily: "Fredoka, sans-serif",
             fontWeight: 600,
             fontSize: big ? 23 : 16,
             lineHeight: 1,
@@ -231,19 +231,18 @@ function TeamBadge({ team, size = 40 }) {
           boxShadow: "0 2px 4px rgba(0,0,0,0.25)",
           overflow: "hidden",
           border: `1px solid ${C.pitch}22`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <img
           src={crest}
           alt={team.name}
           style={{
-            width: "112%",
-            height: "112%",
+            width: "100%",
+            height: "100%",
             objectFit: "contain",
-            position: "relative",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
           }}
         />
       </div>
@@ -268,7 +267,7 @@ function TeamBadge({ team, size = 40 }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontFamily: "Oswald, sans-serif",
+        fontFamily: "Fredoka, sans-serif",
         fontWeight: 600,
         fontSize: size * 0.4,
         flexShrink: 0,
@@ -382,7 +381,7 @@ function TopBar({ title, onBack, right }) {
       ) : (
         <LogoBadge size={34} ringWidth={2} />
       )}
-      <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: 0.3, flex: 1 }}>
+      <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: 0.3, flex: 1 }}>
         {title}
       </div>
       {right}
@@ -430,7 +429,7 @@ function SponsorStrip({ sponsors, tier }) {
           {s.logo ? (
             <img src={s.logo} alt={s.name} style={{ maxWidth: "88%", maxHeight: "88%", objectFit: "contain" }} />
           ) : (
-            <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 9, color: C.ink, textAlign: "center", lineHeight: 1.05, padding: 2 }}>
+            <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 9, color: C.ink, textAlign: "center", lineHeight: 1.05, padding: 2 }}>
               {s.name}
             </span>
           )}
@@ -477,7 +476,7 @@ function WelcomeScreen({ clubs, onChoose, onClose }) {
         <LogoBadge size={84} ringWidth={3} />
         <div
           style={{
-            fontFamily: "Oswald, sans-serif",
+            fontFamily: "Fredoka, sans-serif",
             fontWeight: 700,
             fontSize: 21,
             color: C.line,
@@ -523,7 +522,7 @@ function WelcomeScreen({ clubs, onChoose, onClose }) {
               >
                 <TeamBadge team={c} size={50} />
               </div>
-              <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 12, color: C.line, textAlign: "center", lineHeight: 1.2 }}>
+              <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 12, color: C.line, textAlign: "center", lineHeight: 1.2 }}>
                 {c.name}
               </span>
             </button>
@@ -562,7 +561,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, letterSpacing: 1.5, color: "#F5D9A0", textTransform: "uppercase" }}>
               {EVENT.date}
             </div>
-            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 21, marginTop: 2, lineHeight: 1.2, letterSpacing: 0.2 }}>
+            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 21, marginTop: 2, lineHeight: 1.2, letterSpacing: 0.2 }}>
               {EVENT.name}
             </div>
           </div>
@@ -654,7 +653,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
       </div>
 
       <div style={{ padding: "14px 16px 4px" }}>
-        <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
+        <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
           Pitch Layout
         </div>
         <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12 }}>
@@ -665,7 +664,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
                 <rect x="6" y="6" width="86" height="118" rx="3" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
                 <line x1="6" y1="65" x2="92" y2="65" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
                 <circle cx="49" cy="65" r="12" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
-                <text x="49" y="72" textAnchor="middle" fontFamily="Anton, sans-serif" fontSize="26" fill="#FBF8F3">{i + 1}</text>
+                <text x="49" y="72" textAnchor="middle" fontFamily="Fredoka, sans-serif" fontSize="26" fill="#FBF8F3">{i + 1}</text>
                 <text x="49" y="115" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="700" fill="#FBF8F3" letterSpacing="1">PITCH {i + 1}</text>
               </g>
             ))}
@@ -790,7 +789,7 @@ function TeamsScreen({ teams, matches, setScreen, setSelectedTeam }) {
           >
             <TeamBadge team={c} size={56} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 16, color: C.ink, lineHeight: 1.25 }}>
+              <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 16, color: C.ink, lineHeight: 1.25 }}>
                 {c.name}
               </div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginBottom: 8 }}>{c.town}, Co. {c.county}</div>
@@ -808,7 +807,7 @@ function TeamsScreen({ teams, matches, setScreen, setSelectedTeam }) {
                       border: "none",
                       borderRadius: 8,
                       padding: "7px 16px",
-                      fontFamily: "Oswald, sans-serif",
+                      fontFamily: "Fredoka, sans-serif",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: "pointer",
@@ -838,7 +837,7 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <TeamBadge team={team} size={56} />
           <div>
-            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 17, color: C.ink }}>{team.name}</div>
+            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 17, color: C.ink }}>{team.name}</div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{team.town}, Co. {team.county}</div>
           </div>
         </div>
@@ -925,7 +924,7 @@ function PitchBadge({ pitch }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "Oswald, sans-serif",
+          fontFamily: "Fredoka, sans-serif",
           fontWeight: 700,
           fontSize: 11,
           flexShrink: 0,
@@ -958,7 +957,7 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
         )}
         {Object.keys(groups).sort().map((time) => (
           <div key={time} style={{ marginBottom: 16 }}>
-            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
+            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
             {groups[time].map((m) => (
               <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -1037,7 +1036,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
                 <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.won}</div>
                 <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.drawn}</div>
                 <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.lost}</div>
-                <div style={{ textAlign: "center", fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
+                <div style={{ textAlign: "center", fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
               </div>
             );
           })}
@@ -1099,7 +1098,7 @@ function InfoScreen({ sponsors }) {
       <div style={{ padding: 16 }}>
         {items.map((it) => (
           <div key={it.title} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
-            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink, marginBottom: 6 }}>{it.title}</div>
+            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink, marginBottom: 6 }}>{it.title}</div>
             {it.body && <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>{it.body}</div>}
             {it.list && (
               <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
@@ -1137,7 +1136,7 @@ function InfoScreen({ sponsors }) {
           </div>
         ))}
 
-        <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, margin: "18px 0 12px" }}>
+        <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, margin: "18px 0 12px" }}>
           Thank You to Our Sponsors
         </div>
 
@@ -1174,7 +1173,7 @@ function InfoScreen({ sponsors }) {
                     {s.logo ? (
                       <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: cardSize - 20, objectFit: "contain" }} />
                     ) : (
-                      <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: tierKey === "supporter" ? 12 : 14, color: C.ink, textAlign: "center" }}>
+                      <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: tierKey === "supporter" ? 12 : 14, color: C.ink, textAlign: "center" }}>
                         {s.name}
                       </span>
                     )}
@@ -1202,7 +1201,7 @@ function Stepper({ label, value, onChange, sub }) {
         >
           <Minus size={18} color={C.pitch} />
         </button>
-        <div style={{ fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 22, minWidth: 34, textAlign: "center", color: C.ink }}>{value}</div>
+        <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 22, minWidth: 34, textAlign: "center", color: C.ink }}>{value}</div>
         <button
           onClick={() => onChange(value + 1)}
           style={{ width: 40, height: 40, borderRadius: 10, border: "none", background: C.pitch, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -1293,7 +1292,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <TeamBadge team={team} size={40} />
             <div>
-              <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{team.name}</div>
+              <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{team.name}</div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>Enter your club password to view or edit the food order</div>
             </div>
           </div>
@@ -1346,7 +1345,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
       <TopBar title={team.name} onBack={() => setClubId(null)} />
       <div style={{ padding: 16 }}>
         <div style={{ background: C.turf, color: C.line, borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 16 }}>{team.name} — food order</div>
+          <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 16 }}>{team.name} — food order</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: "#E9DAD0", marginTop: 4 }}>Order by 15 August</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: "#E9DAD0", marginTop: 8, lineHeight: 1.5 }}>{MENTOR_BURGER_NOTE}</div>
         </div>
@@ -1375,7 +1374,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
 
         <div style={{ background: C.line, border: `1px solid ${C.ash}55`, borderRadius: 12, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch headcount</span>
-          <span style={{ fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 22, color: C.pitch }}>{totalLunches}</span>
+          <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 22, color: C.pitch }}>{totalLunches}</span>
         </div>
 
         {saved && (
@@ -1399,7 +1398,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
             border: "none",
             borderRadius: 30,
             padding: "14px 44px",
-            fontFamily: "Anton, sans-serif",
+            fontFamily: "Fredoka, sans-serif",
             fontWeight: 600,
             fontSize: 16,
             letterSpacing: 0.5,
@@ -1619,7 +1618,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               ["Beef burgers", totals.burgers],
             ].map(([label, val]) => (
               <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, textAlign: "center" }}>
-                <div style={{ fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 26, color: C.pitch }}>{val}</div>
+                <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 26, color: C.pitch }}>{val}</div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{label}</div>
               </div>
             ))}
@@ -1655,7 +1654,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       {tab === "fixtures" && (
         <div style={{ padding: 16 }}>
           <div style={{ background: C.line, border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
-            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
+            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
@@ -1957,7 +1956,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             return (
               <div key={entry.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                  <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 12.5, color: C.pitch }}>{entry.admin}</span>
+                  <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 12.5, color: C.pitch }}>{entry.admin}</span>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{timeLabel}</span>
                 </div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink }}>{entry.action}</div>
