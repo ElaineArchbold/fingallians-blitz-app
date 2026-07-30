@@ -1904,6 +1904,33 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
   );
 }
 
+function computeTeamGaps(teamId, matches) {
+  if (!teamId) return [];
+  const timeToMin = (t) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  const minToTime = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `${h}:${String(m).padStart(2, "0")}`;
+  };
+  const MATCH_DURATION_MIN = 23; // 20 min play + 3 min half-time, per the playing rules
+  const myTimes = matches
+    .filter((m) => (m.teamA === teamId || m.teamB === teamId) && !m.finalLabel)
+    .map((m) => timeToMin(m.time))
+    .sort((a, b) => a - b);
+
+  const gaps = [];
+  for (let i = 0; i < myTimes.length - 1; i++) {
+    const freeFrom = myTimes[i] + MATCH_DURATION_MIN;
+    const freeTo = myTimes[i + 1];
+    const minutes = freeTo - freeFrom;
+    if (minutes >= 10) gaps.push({ from: minToTime(freeFrom), to: minToTime(freeTo), minutes });
+  }
+  return gaps;
+}
+
 function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub, myClubName, onOpenWelcome, onChangeClub, lunchWindows }) {
   if (!myClub) {
     return (
@@ -1990,15 +2017,15 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
         </div>
 
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 4 }}>
-          Lunch Window
+          🍔 Burger Break
         </div>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginBottom: 8, lineHeight: 1.4 }}>
-          A fixed break, built into the schedule — your A and B teams eat at the same time.
+          Your fixed break, built into the schedule — both your A and B teams rest at the same time. Burgers will be ready to hand to your mentor at this time.
         </div>
         {(() => {
           const myLunch = (Array.isArray(lunchWindows) ? lunchWindows : []).find((w) => w.clubs?.includes(myClub)) || null;
           return (
-            <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 20, textAlign: "center" }}>
+            <div style={{ background: "#fff", border: `2px solid ${C.pitch}`, borderRadius: 12, padding: 14, marginBottom: 10, textAlign: "center" }}>
               {myLunch ? (
                 <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 20, color: C.pitch }}>
                   {myLunch.from}–{myLunch.to}
@@ -2006,6 +2033,31 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
               ) : (
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.inkSoft, padding: "6px 0" }}>Generate the schedule to see this</div>
               )}
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const myLunch = (Array.isArray(lunchWindows) ? lunchWindows : []).find((w) => w.clubs?.includes(myClub)) || null;
+          const overlapsLunch = (gap) => myLunch && gap.from < myLunch.to && gap.to > myLunch.from;
+          const otherGapsA = teamA ? computeTeamGaps(teamA.id, matches).filter((g) => !overlapsLunch(g)) : [];
+          const otherGapsB = teamB ? computeTeamGaps(teamB.id, matches).filter((g) => !overlapsLunch(g)) : [];
+          if (otherGapsA.length === 0 && otherGapsB.length === 0) return null;
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                Other breaks between matches
+              </div>
+              {otherGapsA.map((g, i) => (
+                <div key={`a${i}`} style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginBottom: 3 }}>
+                  A team: {g.from}–{g.to} <span style={{ opacity: 0.7 }}>({g.minutes} min)</span>
+                </div>
+              ))}
+              {otherGapsB.map((g, i) => (
+                <div key={`b${i}`} style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginBottom: 3 }}>
+                  B team: {g.from}–{g.to} <span style={{ opacity: 0.7 }}>({g.minutes} min)</span>
+                </div>
+              ))}
             </div>
           );
         })()}
@@ -2073,7 +2125,7 @@ function shuffle(arr) {
   return a;
 }
 
-const LUNCH_MINUTES = 30;
+const LUNCH_MINUTES = 25;
 const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
 const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; // the bit that doesn't fit a whole slot
 
@@ -3243,6 +3295,7 @@ export default function App() {
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
   const [auditLog, setAuditLog] = useState([]);
   const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [adminName, setAdminName] = useState("");
   const [loginModalMode, setLoginModalMode] = useState(null); // null | "mentor" | "referee"
@@ -3321,6 +3374,12 @@ export default function App() {
       setLunchWindows(Array.isArray(lunch) ? lunch : []); // old data was an object, not an array — discard if so
       setLoaded(true);
       checkForNewAnnouncement(a);
+
+      let seenWelcome = null;
+      try {
+        seenWelcome = localStorage.getItem("seenWelcomeMessage");
+      } catch {}
+      if (!seenWelcome) setShowWelcomeMessage(true);
     })();
   }, []);
 
@@ -3358,6 +3417,13 @@ export default function App() {
     }
     setAnnouncementModal(null);
   }, [announcementModal]);
+
+  const dismissWelcomeMessage = useCallback(() => {
+    try {
+      localStorage.setItem("seenWelcomeMessage", "1");
+    } catch {}
+    setShowWelcomeMessage(false);
+  }, []);
 
   const logAction = useCallback((adminName, action) => {
     setAuditLog((prev) => {
@@ -3512,6 +3578,71 @@ export default function App() {
             setScreen("referee");
           }}
         />
+      )}
+
+      {showWelcomeMessage && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(20,17,16,0.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={dismissWelcomeMessage}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 18,
+              padding: "24px 22px",
+              maxWidth: 360,
+              width: "100%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              border: `3px solid ${C.sliotar}`,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+              <LogoBadge size={56} ringWidth={2.5} />
+            </div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 16, color: C.pitch, textAlign: "center", marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.3 }}>
+              Welcome!
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: C.ink, lineHeight: 1.6 }}>
+              {WELCOME_PARAGRAPHS.map((p, i) => (
+                <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
+              ))}
+              <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
+            </div>
+            <button
+              onClick={dismissWelcomeMessage}
+              style={{
+                width: "100%",
+                background: C.pitch,
+                color: "#fff",
+                border: "none",
+                borderRadius: 30,
+                padding: 12,
+                fontFamily: "Poppins, sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                marginTop: 18,
+              }}
+            >
+              Let's go!
+            </button>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>
+              You can always read this again on the Info tab.
+            </div>
+          </div>
+        </div>
       )}
 
       {announcementModal && (
