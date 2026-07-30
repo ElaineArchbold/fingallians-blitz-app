@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone, Eye, EyeOff, Shield } from "lucide-react";
+import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone, Eye, EyeOff, Shield, UserCircle, Flag } from "lucide-react";
 
 /* ---------- Design tokens (matched to the real club crest: red / black / gold) ---------- */
 const C = {
@@ -252,7 +252,7 @@ function LogoBadge({ size = 60, ringWidth = 3 }) {
       <img
         src={BADGE_LOGO}
         alt="Fingallians Hurling Blitz badge"
-        style={{ width: "76%", height: "76%", objectFit: "contain" }}
+        style={{ width: "88%", height: "88%", objectFit: "contain" }}
       />
     </div>
   );
@@ -452,7 +452,7 @@ function TopBar({ title, onBack, right, followedTeam }) {
           <ChevronLeft size={22} />
         </button>
       ) : (
-        <LogoBadge size={34} ringWidth={2} />
+        <LogoBadge size={46} ringWidth={2.5} />
       )}
       <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: 0.3, flex: 1 }}>
         {title}
@@ -794,7 +794,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
               </div>
             ))}
           </div>
-          {lunchWindows && lunchWindows.length > 0 && (
+          {Array.isArray(lunchWindows) && lunchWindows.length > 0 && (
             <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", textAlign: "center" }}>
               <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff" }}>
                 {lunchWindows[0].from} – {lunchWindows[lunchWindows.length - 1].to}
@@ -811,26 +811,6 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
       </div>
 
       <SponsorStrip sponsors={sponsors} tier="gold" />
-
-      <div style={{ padding: "12px 16px 0" }}>
-        <div
-          style={{
-            background: "#fff",
-            border: `1px solid ${C.ash}44`,
-            borderRadius: 10,
-            padding: "16px 16px",
-            fontFamily: "Inter, sans-serif",
-            fontSize: 13,
-            color: C.ink,
-            lineHeight: 1.6,
-          }}
-        >
-          {WELCOME_PARAGRAPHS.map((p, i) => (
-            <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
-          ))}
-          <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
-        </div>
-      </div>
 
       <div style={{ padding: "14px 16px 4px" }}>
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
@@ -1502,6 +1482,25 @@ function InfoScreen({ sponsors, announcements, myClubObj }) {
           </div>
         )}
 
+        <div
+          style={{
+            background: "#fff",
+            border: `1px solid ${C.ash}44`,
+            borderRadius: 10,
+            padding: "16px 16px",
+            marginBottom: 16,
+            fontFamily: "Inter, sans-serif",
+            fontSize: 13,
+            color: C.ink,
+            lineHeight: 1.6,
+          }}
+        >
+          {WELCOME_PARAGRAPHS.map((p, i) => (
+            <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
+          ))}
+          <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
+        </div>
+
         {items.map((it) => (
           <div key={it.title} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
             <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink, marginBottom: 6 }}>{it.title}</div>
@@ -1997,7 +1996,7 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
           A fixed break, built into the schedule — your A and B teams eat at the same time.
         </div>
         {(() => {
-          const myLunch = lunchWindows?.find((w) => w.clubs?.includes(myClub)) || null;
+          const myLunch = (Array.isArray(lunchWindows) ? lunchWindows : []).find((w) => w.clubs?.includes(myClub)) || null;
           return (
             <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 20, textAlign: "center" }}>
               {myLunch ? (
@@ -2074,17 +2073,19 @@ function shuffle(arr) {
   return a;
 }
 
-const LUNCH_MINUTES = 50; // exactly 2 x 25-minute slots — no rounding needed
-const LUNCH_MIN_SLOTS = Math.ceil(LUNCH_MINUTES / SLOT_MINUTES);
+const LUNCH_MINUTES = 30;
+const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
+const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; // the bit that doesn't fit a whole slot
 
 // Fills pitches for consecutive slots from the given pool, respecting the absolute
 // rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
 // pool empties sooner, so a lunch block can be padded to a real fixed duration.
 // Mutates `pool` and `lastPlayedSlot`; returns the next free slot index.
-function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null) {
+function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null, extraOffsetRef = null) {
   let slotIndex = startSlot;
   let slotsUsed = 0;
   let guard = 0;
+  const offset = extraOffsetRef ? extraOffsetRef.value : 0;
   while (guard < 200) {
     guard++;
     const used = new Set();
@@ -2103,7 +2104,7 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
       }
     }
     if (slotMatches.length > 0) {
-      const timeLabel = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
+      const timeLabel = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + offset);
       slotMatches.forEach((m, pi) => {
         lastPlayedSlot[m.a.id] = slotIndex;
         lastPlayedSlot[m.b.id] = slotIndex;
@@ -2158,11 +2159,12 @@ function generateGroupFixtures(teams) {
   const fixtures = [];
   const lastPlayedSlot = {};
   let slotIndex = 0;
+  const extraOffset = { value: 0 };
 
   // Warm-up: everyone's first round only (8 matches) — just enough that nobody
   // breaks for lunch before playing at least once.
   const round1All = [...toMatches(rrAg1[0]), ...toMatches(rrAg2[0]), ...toMatches(rrBg1[0]), ...toMatches(rrBg2[0])];
-  slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot);
+  slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
   // Remaining pool: rounds 2 and 3 combined (16 matches) — deliberately NOT
   // split, so the 4 staggered lunch phases below have enough slack to actually
@@ -2190,20 +2192,25 @@ function generateGroupFixtures(teams) {
       excludeIds.add(cid + "B");
     });
     const phaseStart = slotIndex;
-    slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds);
+    const fromLabel = minutesToLabel(START_HOUR * 60 + START_MIN + phaseStart * SLOT_MINUTES + extraOffset.value);
+    slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds, extraOffset);
+    // Add whatever's left of the requested lunch length that doesn't fit a
+    // whole match slot — a genuine arbitrary-length break, not just a rounded
+    // multiple of 25 minutes.
+    extraOffset.value += LUNCH_REMAINDER_MINUTES;
     lunchWindows.push({
-      from: minutesToLabel(START_HOUR * 60 + START_MIN + phaseStart * SLOT_MINUTES),
-      to: minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES),
+      from: fromLabel,
+      to: minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value),
       clubs: pair,
     });
   });
 
   // Mop-up: anything still unplayed (shouldn't normally be much, if anything —
   // safety net in case a match's teams were still excluded right to the end).
-  slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot);
+  slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
   // Finals — teams left blank until group placings are known.
-  const cupTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
+  const cupTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value);
   fixtures.push({
     id: `final-acup-${Date.now()}`,
     time: cupTime,
@@ -2223,7 +2230,7 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Cup Final",
   });
 
-  const shieldTime = minutesToLabel(START_HOUR * 60 + START_MIN + (slotIndex + 1) * SLOT_MINUTES);
+  const shieldTime = minutesToLabel(START_HOUR * 60 + START_MIN + (slotIndex + 1) * SLOT_MINUTES + extraOffset.value);
   fixtures.push({
     id: `final-ashield-${Date.now()}`,
     time: shieldTime,
@@ -2247,69 +2254,11 @@ function generateGroupFixtures(teams) {
 }
 
 /* ---------- Admin ---------- */
-function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved }) {
-  const [authed, setAuthed] = useState(false);
-  const [adminName, setAdminName] = useState("");
-  const [code, setCode] = useState("");
-  const [loginError, setLoginError] = useState(false);
-  const [showCode, setShowCode] = useState(false);
+function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved, adminName, onLogout }) {
   const [tab, setTab] = useState("orders");
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [newFixture, setNewFixture] = useState({ time: "", pitch: "", teamA: "", teamB: "" });
   const [saveError, setSaveError] = useState(null);
-
-  if (!authed) {
-    return (
-      <div style={{ padding: 16 }}>
-        <TopBar title="Mentor login" />
-        <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <Lock size={16} color={C.pitch} />
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft }}>Mentors only</span>
-          </div>
-          <div style={{ position: "relative", marginBottom: 10 }}>
-            <input
-              type={showCode ? "text" : "password"}
-              placeholder="Passcode"
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value);
-                setLoginError(false);
-              }}
-              style={{ width: "100%", padding: "12px 42px 12px 12px", borderRadius: 8, border: `1px solid ${loginError ? C.pitch : C.pitch + "33"}`, fontFamily: "Inter, sans-serif" }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowCode((v) => !v)}
-              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: C.inkSoft, padding: 4 }}
-            >
-              {showCode ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-          {loginError && (
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.pitch, marginBottom: 8 }}>
-              That passcode isn't recognised.
-            </div>
-          )}
-          <button
-            onClick={() => {
-              const name = findAdminByCode(code);
-              if (name) {
-                setAdminName(name);
-                setAuthed(true);
-                logAction(name, "Logged in");
-              } else {
-                setLoginError(true);
-              }
-            }}
-            style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontFamily: "Inter, sans-serif", fontWeight: 700, cursor: "pointer" }}
-          >
-            Enter
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const totals = clubs.reduce(
     (acc, t) => {
@@ -2373,9 +2322,17 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       <TopBar
         title="Mentor dashboard"
         right={
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>
-            {adminName}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>
+              {adminName}
+            </span>
+            <button
+              onClick={onLogout}
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 14, padding: "4px 10px", fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: "#fff", cursor: "pointer" }}
+            >
+              Logout
+            </button>
+          </div>
         }
       />
       <div style={{ display: "flex", gap: 6, padding: "12px 16px 0", overflowX: "auto" }}>
@@ -2513,7 +2470,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             >
               Generate schedule (24 group + 4 finals)
             </button>
-            {lunchWindows && lunchWindows.length > 0 && (
+            {Array.isArray(lunchWindows) && lunchWindows.length > 0 && (
               <div style={{ marginTop: 10, fontFamily: "Inter, sans-serif", fontSize: 12, color: C.ink, background: "#fff", borderRadius: 8, padding: 10, lineHeight: 1.6 }}>
                 {lunchWindows.map((w, i) => (
                   <div key={i} style={{ marginTop: i > 0 ? 4 : 0 }}>
@@ -2924,7 +2881,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 persist("orders", DEFAULT_ORDERS);
                 setAnnouncements(DEFAULT_ANNOUNCEMENTS);
                 persist("announcements", DEFAULT_ANNOUNCEMENTS);
-                setLunchWindows({ A: null, B: null });
+                setLunchWindows([]);
                 persist("lunchWindows", []);
                 logAction(adminName, "Reset all test data (fixtures, orders, announcements, lunch windows) to a clean slate");
               }}
@@ -3160,6 +3117,99 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
   );
 }
 
+function LoginModal({ mode, onClose, onMentorSuccess, onRefereeSuccess }) {
+  const [code, setCode] = useState("");
+  const [showCode, setShowCode] = useState(false);
+  const [error, setError] = useState(false);
+  const [name, setName] = useState("");
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(20,17,16,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 18, padding: "24px 22px", maxWidth: 320, width: "100%", border: `3px solid ${C.sliotar}` }}
+      >
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.inkSoft }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {mode === "mentor" ? (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <UserCircle size={20} color={C.pitch} />
+              <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink }}>Mentor sign-in</span>
+            </div>
+            <div style={{ position: "relative", marginBottom: 8 }}>
+              <input
+                type={showCode ? "text" : "password"}
+                placeholder="Passcode"
+                value={code}
+                autoFocus
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  setError(false);
+                }}
+                style={{ width: "100%", padding: "12px 42px 12px 12px", borderRadius: 8, border: `1px solid ${error ? C.pitch : C.pitch + "33"}`, fontFamily: "Inter, sans-serif" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCode((v) => !v)}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: C.inkSoft, padding: 4 }}
+              >
+                {showCode ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {error && (
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.pitch, marginBottom: 8 }}>
+                That passcode isn't recognised.
+              </div>
+            )}
+            <button
+              onClick={() => {
+                const found = findAdminByCode(code);
+                if (found) onMentorSuccess(found);
+                else setError(true);
+              }}
+              style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontFamily: "Inter, sans-serif", fontWeight: 700, cursor: "pointer" }}
+            >
+              Enter
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <Flag size={20} color={C.pitch} />
+              <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink }}>Referee sign-in</span>
+            </div>
+            <input
+              placeholder="Your name"
+              value={name}
+              autoFocus
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", marginBottom: 10 }}
+            />
+            <button
+              onClick={() => {
+                const trimmed = name.trim();
+                if (!trimmed) return;
+                onRefereeSuccess(trimmed);
+              }}
+              style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontFamily: "Inter, sans-serif", fontWeight: 700, cursor: "pointer" }}
+            >
+              Continue
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function playAnnouncementDing() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3193,6 +3243,9 @@ export default function App() {
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
   const [auditLog, setAuditLog] = useState([]);
   const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
+  const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminName, setAdminName] = useState("");
+  const [loginModalMode, setLoginModalMode] = useState(null); // null | "mentor" | "referee"
   const [lunchWindows, setLunchWindows] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
 
@@ -3265,7 +3318,7 @@ export default function App() {
       setAnnouncements(a);
       setSponsors(s);
       setAuditLog(log);
-      setLunchWindows(lunch);
+      setLunchWindows(Array.isArray(lunch) ? lunch : []); // old data was an object, not an array — discard if so
       setLoaded(true);
       checkForNewAnnouncement(a);
     })();
@@ -3372,7 +3425,7 @@ export default function App() {
   else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} myClubObj={myClubObj} />;
   else if (screen === "team") body = <TeamScreen teams={teams} clubs={clubs} matches={matches} orders={orders} saveOrder={saveOrder} sponsors={sponsors} myClub={myClub} myClubName={myClubObj?.name} onOpenWelcome={openWelcome} onChangeClub={changeClub} lunchWindows={lunchWindows} />;
   else if (screen === "info") body = <InfoScreen sponsors={sponsors} announcements={announcements} myClubObj={myClubObj} />;
-  else if (screen === "admin")
+  else if (screen === "admin" && adminAuthed)
     body = (
       <AdminScreen
         teams={teams}
@@ -3390,31 +3443,76 @@ export default function App() {
         lunchWindows={lunchWindows}
         setLunchWindows={setLunchWindows}
         wasRecentlySaved={wasRecentlySaved}
+        adminName={adminName}
+        onLogout={() => {
+          logAction(adminName, "Logged out");
+          setAdminAuthed(false);
+          setAdminName("");
+          setScreen("today");
+        }}
       />
     );
   else if (screen === "referee")
     body = <RefereeScreen teams={teams} matches={matches} setMatches={setMatches} persist={persist} logAction={logAction} wasRecentlySaved={wasRecentlySaved} />;
+  // If screen is somehow "admin" without being authed, body stays unset here and
+  // falls through to the safety-net default below — no state updates during render.
+
+  if (!body) body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} />;
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.line, minHeight: "100dvh", display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif" }}>
       <style>{FONT_IMPORT}</style>
       <div style={{ flex: 1, overflowY: "auto" }}>{body}</div>
       <BottomNav screen={screen} setScreen={setScreen} />
-      <div style={{ textAlign: "center", padding: "6px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 14 }}>
+      <div style={{ textAlign: "center", padding: "8px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 20 }}>
         <button
-          onClick={() => setScreen("admin")}
-          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
+          onClick={() => {
+            if (adminAuthed) setScreen("admin");
+            else setLoginModalMode("mentor");
+          }}
+          title="Mentor sign-in"
+          style={{ background: "none", border: "none", color: adminAuthed ? C.sliotar : "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
         >
-          Mentor login
+          <UserCircle size={20} />
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Mentor</span>
         </button>
-        <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 10 }}>·</span>
         <button
-          onClick={() => setScreen("referee")}
-          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
+          onClick={() => {
+            let existing = null;
+            try {
+              existing = localStorage.getItem("refName");
+            } catch {}
+            if (existing) setScreen("referee");
+            else setLoginModalMode("referee");
+          }}
+          title="Referee sign-in"
+          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
         >
-          Referee
+          <Flag size={20} />
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Referee</span>
         </button>
       </div>
+
+      {loginModalMode && (
+        <LoginModal
+          mode={loginModalMode}
+          onClose={() => setLoginModalMode(null)}
+          onMentorSuccess={(name) => {
+            setAdminName(name);
+            setAdminAuthed(true);
+            logAction(name, "Logged in");
+            setLoginModalMode(null);
+            setScreen("admin");
+          }}
+          onRefereeSuccess={(name) => {
+            try {
+              localStorage.setItem("refName", name);
+            } catch {}
+            setLoginModalMode(null);
+            setScreen("referee");
+          }}
+        />
+      )}
 
       {announcementModal && (
         <div
