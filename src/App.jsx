@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone, Eye, EyeOff, Shield } from "lucide-react";
 
 /* ---------- Design tokens (matched to the real club crest: red / black / gold) ---------- */
@@ -2173,7 +2173,7 @@ function generateGroupFixtures(teams) {
 }
 
 /* ---------- Admin ---------- */
-function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows }) {
+function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved }) {
   const [authed, setAuthed] = useState(false);
   const [adminName, setAdminName] = useState("");
   const [code, setCode] = useState("");
@@ -2250,8 +2250,10 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   const updateMatch = async (id, patch) => {
     // Pull the freshest copy from the server right before writing, so a second
     // admin/referee saving a different match seconds ago doesn't get clobbered
-    // by this save re-writing the whole list from a stale local copy.
-    const latest = await loadShared("matches", matches);
+    // by this save re-writing the whole list from a stale local copy. Skip the
+    // fetch if WE just saved seconds ago — that fetch could itself race ahead
+    // of our own write and hand back stale data, wiping what we just did.
+    const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
     const updatedList = latest.map((m) => (m.id === id ? { ...m, ...patch } : m));
     const next = autoFillFinals(updatedList, teams);
     setMatches(next);
@@ -2878,7 +2880,7 @@ function MiniScoreInput({ label, value, onChange }) {
   );
 }
 
-function RefereeScreen({ teams, matches, setMatches, persist, logAction }) {
+function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRecentlySaved }) {
   const [refName, setRefName] = useState(() => {
     try {
       return localStorage.getItem("refName") || "";
@@ -2965,7 +2967,7 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction }) {
 
           <button
             onClick={async () => {
-              const latest = await loadShared("matches", matches);
+              const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
               const updatedList = latest.map((x) => (x.id === m.id ? { ...x, ...draft, status: "finished" } : x));
               const next = autoFillFinals(updatedList, teams);
               setMatches(next);
@@ -3167,8 +3169,12 @@ export default function App() {
   // Poll for fixture/score changes too, so with multiple people using the app
   // at once (referees entering scores, mentors and parents watching), everyone's
   // Fixtures/Standings/Team views stay current without needing a manual reload.
+  // Skips the update if we saved locally very recently, so this can never race
+  // ahead of our own save and wipe fixtures we just generated/edited.
   useEffect(() => {
     const interval = setInterval(async () => {
+      const recentlySaved = Date.now() - (lastSaveTimeRef.current.matches || 0) < 15000;
+      if (recentlySaved) return;
       const latest = await loadShared("matches", DEFAULT_MATCHES);
       setMatches(latest);
     }, 20000);
@@ -3211,7 +3217,12 @@ export default function App() {
     return Array.from(seen.values());
   }, [teams]);
 
-  const persist = useCallback((key, value) => saveShared(key, value), []);
+  const lastSaveTimeRef = useRef({});
+  const persist = useCallback((key, value) => {
+    lastSaveTimeRef.current[key] = Date.now();
+    return saveShared(key, value);
+  }, []);
+  const wasRecentlySaved = useCallback((key, ms = 3000) => Date.now() - (lastSaveTimeRef.current[key] || 0) < ms, []);
 
   const myClubObj = clubs.find((c) => c.id === myClub) || null;
 
@@ -3262,10 +3273,11 @@ export default function App() {
         logAction={logAction}
         lunchWindows={lunchWindows}
         setLunchWindows={setLunchWindows}
+        wasRecentlySaved={wasRecentlySaved}
       />
     );
   else if (screen === "referee")
-    body = <RefereeScreen teams={teams} matches={matches} setMatches={setMatches} persist={persist} logAction={logAction} />;
+    body = <RefereeScreen teams={teams} matches={matches} setMatches={setMatches} persist={persist} logAction={logAction} wasRecentlySaved={wasRecentlySaved} />;
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.line, minHeight: "100dvh", display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif" }}>
