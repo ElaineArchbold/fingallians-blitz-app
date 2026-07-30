@@ -2247,8 +2247,12 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
     { sausageRolls: 0, burgers: 0 }
   );
 
-  const updateMatch = (id, patch) => {
-    const updatedList = matches.map((m) => (m.id === id ? { ...m, ...patch } : m));
+  const updateMatch = async (id, patch) => {
+    // Pull the freshest copy from the server right before writing, so a second
+    // admin/referee saving a different match seconds ago doesn't get clobbered
+    // by this save re-writing the whole list from a stale local copy.
+    const latest = await loadShared("matches", matches);
+    const updatedList = latest.map((m) => (m.id === id ? { ...m, ...patch } : m));
     const next = autoFillFinals(updatedList, teams);
     setMatches(next);
     persist("matches", next);
@@ -2263,7 +2267,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       }
     });
 
-    const m = matches.find((x) => x.id === id);
+    const m = latest.find((x) => x.id === id);
     if (m) {
       if (patch.teamA !== undefined || patch.teamB !== undefined) {
         const updated = { ...m, ...patch };
@@ -2960,8 +2964,9 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction }) {
           )}
 
           <button
-            onClick={() => {
-              const updatedList = matches.map((x) => (x.id === m.id ? { ...x, ...draft, status: "finished" } : x));
+            onClick={async () => {
+              const latest = await loadShared("matches", matches);
+              const updatedList = latest.map((x) => (x.id === m.id ? { ...x, ...draft, status: "finished" } : x));
               const next = autoFillFinals(updatedList, teams);
               setMatches(next);
               persist("matches", next);
@@ -3080,14 +3085,20 @@ export default function App() {
       return null;
     }
   });
-  const [screen, setScreen] = useState("today");
+  const [screen, setScreen] = useState(() => {
+    try {
+      return localStorage.getItem("myClub") ? "team" : "welcome";
+    } catch {
+      return "welcome";
+    }
+  });
 
   const chooseClub = useCallback((clubId) => {
     try {
       localStorage.setItem("myClub", clubId);
     } catch {}
     setMyClub(clubId);
-    setScreen("today");
+    setScreen("team");
   }, []);
 
   const closeWelcome = useCallback(() => {
@@ -3153,6 +3164,17 @@ export default function App() {
     return () => clearInterval(interval);
   }, [checkForNewAnnouncement]);
 
+  // Poll for fixture/score changes too, so with multiple people using the app
+  // at once (referees entering scores, mentors and parents watching), everyone's
+  // Fixtures/Standings/Team views stay current without needing a manual reload.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const latest = await loadShared("matches", DEFAULT_MATCHES);
+      setMatches(latest);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
   const dismissAnnouncementModal = useCallback(() => {
     if (announcementModal) {
       try {
@@ -3195,7 +3217,8 @@ export default function App() {
 
   const saveOrder = useCallback(
     async (clubId, order) => {
-      const next = { ...orders, [clubId]: order };
+      const latest = await loadShared("orders", orders);
+      const next = { ...latest, [clubId]: order };
       setOrders(next);
       await saveShared("orders", next);
     },
