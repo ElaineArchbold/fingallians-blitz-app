@@ -124,6 +124,12 @@ function findAdminByCode(code) {
   return match ? match[1] : null;
 }
 
+// Referees get in via a secret link (e.g. blitz.fingallians.fun/?ref=blitzref2026)
+// rather than a visible button — there's no password gate on referee mode (just a
+// name, for accountability in the audit log), so this keeps it from being an open
+// door anyone browsing the app could stumble into. Change this any time if it leaks.
+const REFEREE_SECRET = "blitzref2026";
+
 // Per-club password for editing that club's food order — pattern: 4-letter club code + 2-digit
 // founding year. Case-insensitive on entry (see checkPassword below).
 const CLUB_PASSWORDS = {
@@ -458,7 +464,7 @@ function TopBar({ title, onBack, right, followedTeam }) {
         {title}
       </div>
       {right}
-      {!right && followedTeam && <TeamBadge team={followedTeam} size={30} />}
+      {!right && followedTeam && <TeamBadge team={followedTeam} size={46} />}
     </div>
   );
 }
@@ -1407,6 +1413,7 @@ function InfoScreen({ sponsors, announcements, myClubObj }) {
     },
     {
       title: "Parking & directions",
+      image: `/parking-map.jpg?v=${CREST_VERSION}`,
       body: "Limited car parking is available at Fingallians GAA, and buses are welcome to park on site. Overflow parking has been kindly provided by the HSE at Swords Business Campus, a short ten-minute walk from the grounds — stewards will be on duty at both locations to guide you.",
       map: true,
     },
@@ -1980,7 +1987,7 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
 
   return (
     <div style={{ paddingBottom: 20 }}>
-      <TopBar title={club?.name || "My Team"} />
+      <TopBar title={club?.name || "My Team"} followedTeam={club} />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
           {club && <TeamBadge team={club} size={52} />}
@@ -3311,6 +3318,8 @@ export default function App() {
   });
   const [screen, setScreen] = useState(() => {
     try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("ref") === REFEREE_SECRET) return "referee";
       return localStorage.getItem("myClub") ? "team" : "welcome";
     } catch {
       return "welcome";
@@ -3542,21 +3551,23 @@ export default function App() {
           <UserCircle size={20} />
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Mentor</span>
         </button>
-        <button
-          onClick={() => {
-            let existing = null;
-            try {
-              existing = localStorage.getItem("refName");
-            } catch {}
-            if (existing) setScreen("referee");
-            else setLoginModalMode("referee");
-          }}
-          title="Referee sign-in"
-          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
-        >
-          <Flag size={20} />
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Referee</span>
-        </button>
+        {(() => {
+          let existing = null;
+          try {
+            existing = localStorage.getItem("refName");
+          } catch {}
+          if (!existing) return null; // hidden until someone's come in via the referee link once
+          return (
+            <button
+              onClick={() => setScreen("referee")}
+              title="Referee"
+              style={{ background: "none", border: "none", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
+            >
+              <Flag size={20} />
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Referee</span>
+            </button>
+          );
+        })()}
       </div>
 
       {loginModalMode && (
