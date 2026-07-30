@@ -312,7 +312,7 @@ function BottomNav({ screen, setScreen }) {
         bottom: 0,
         left: 0,
         right: 0,
-        background: C.turf,
+        background: C.pitch,
         borderTop: `2px solid ${C.sliotar}`,
         display: "flex",
         zIndex: 20,
@@ -334,7 +334,7 @@ function BottomNav({ screen, setScreen }) {
               flexDirection: "column",
               alignItems: "center",
               gap: 3,
-              color: active ? C.line : "#B89A8E",
+              color: active ? C.line : "rgba(255,255,255,0.65)",
               cursor: "pointer",
             }}
           >
@@ -356,7 +356,7 @@ function TopBar({ title, onBack, right }) {
       style={{
         background: C.pitch,
         color: C.line,
-        padding: "14px 16px",
+        padding: "10px 16px",
         display: "flex",
         alignItems: "center",
         gap: 10,
@@ -367,10 +367,12 @@ function TopBar({ title, onBack, right }) {
       }}
     >
       {onBack ? (
-        <button onClick={onBack} style={{ background: "none", border: "none", color: C.line, cursor: "pointer", padding: 0 }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: C.line, cursor: "pointer", padding: 0, flexShrink: 0 }}>
           <ChevronLeft size={22} />
         </button>
-      ) : null}
+      ) : (
+        <LogoBadge size={34} ringWidth={2} />
+      )}
       <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: 0.3, flex: 1 }}>
         {title}
       </div>
@@ -380,61 +382,20 @@ function TopBar({ title, onBack, right }) {
 }
 
 function SponsorStrip({ sponsors, tier }) {
-  if (tier === "gold") {
-    const golds = sponsors.filter((s) => s.tier === "gold");
-    if (!golds.length) return null;
-    return (
-      <div style={{ background: "#fff", padding: "14px 16px", borderBottom: `1px solid ${C.pitch}14` }}>
-        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, textAlign: "center" }}>
-          Proud main sponsors
-        </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-          {golds.map((s) => (
-            <a
-              key={s.id}
-              href={s.url || undefined}
-              onClick={(e) => !s.url && e.preventDefault()}
-              style={{
-                flex: "1 1 140px",
-                maxWidth: 170,
-                background: `linear-gradient(160deg, #fff, ${C.line})`,
-                border: `1.5px solid ${C.sliotar}`,
-                borderRadius: 14,
-                padding: "14px 12px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                textDecoration: "none",
-                minHeight: 72,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-              }}
-            >
-              {s.logo ? (
-                <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: 44, objectFit: "contain" }} />
-              ) : (
-                <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
-                  {s.name}
-                </span>
-              )}
-            </a>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  const list = sponsors.filter((s) => s.tier === "gold" || s.tier === "silver");
+  const list = tier === "gold"
+    ? sponsors.filter((s) => s.tier === "gold")
+    : sponsors.filter((s) => s.tier === "gold" || s.tier === "silver");
   if (!list.length) return null;
   return (
     <div
       style={{
+        background: "#fff",
+        padding: "8px 16px",
+        borderBottom: `1px solid ${C.pitch}14`,
         display: "flex",
-        gap: 10,
-        overflowX: "auto",
-        padding: "10px 16px",
-        background: "#EFE9DC",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
       }}
     >
       {list.map((s) => (
@@ -442,25 +403,28 @@ function SponsorStrip({ sponsors, tier }) {
           key={s.id}
           href={s.url || undefined}
           onClick={(e) => !s.url && e.preventDefault()}
+          title={s.name}
           style={{
-            flexShrink: 0,
-            background: "#fff",
-            border: `1px solid ${C.ash}55`,
+            width: 46,
+            height: 46,
             borderRadius: 10,
-            padding: s.logo ? "8px 12px" : "8px 14px",
+            background: C.line,
+            border: `1.5px solid ${s.tier === "gold" ? C.sliotar : C.ash + "88"}`,
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            fontFamily: "Inter, sans-serif",
-            fontSize: 12,
-            fontWeight: 600,
-            color: C.ink,
+            justifyContent: "center",
+            overflow: "hidden",
+            flexShrink: 0,
             textDecoration: "none",
-            whiteSpace: "nowrap",
           }}
         >
-          {s.logo && <img src={s.logo} alt={s.name} style={{ height: 20, maxWidth: 60, objectFit: "contain" }} />}
-          {s.name} <span style={{ color: C.ash, fontWeight: 400 }}>· sponsor</span>
+          {s.logo ? (
+            <img src={s.logo} alt={s.name} style={{ maxWidth: "88%", maxHeight: "88%", objectFit: "contain" }} />
+          ) : (
+            <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 9, color: C.ink, textAlign: "center", lineHeight: 1.05, padding: 2 }}>
+              {s.name}
+            </span>
+          )}
         </a>
       ))}
     </div>
@@ -680,6 +644,29 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
         </div>
       </div>
 
+      <div style={{ padding: "14px 16px 4px" }}>
+        <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
+          Pitch Layout
+        </div>
+        <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12 }}>
+          <svg viewBox="0 0 320 150" style={{ width: "100%", height: "auto" }}>
+            {[0, 1, 2].map((i) => (
+              <g key={i} transform={`translate(${8 + i * 106}, 10)`}>
+                <rect x="0" y="0" width="98" height="130" rx="6" fill="#3E7350" stroke="#1C1613" strokeWidth="1.5" />
+                <rect x="6" y="6" width="86" height="118" rx="3" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
+                <line x1="6" y1="65" x2="92" y2="65" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
+                <circle cx="49" cy="65" r="12" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
+                <text x="49" y="72" textAnchor="middle" fontFamily="Anton, sans-serif" fontSize="26" fill="#FBF8F3">{i + 1}</text>
+                <text x="49" y="115" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="700" fill="#FBF8F3" letterSpacing="1">PITCH {i + 1}</text>
+              </g>
+            ))}
+          </svg>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>
+            Illustrative layout — ask an organiser on the day for exact pitch locations at Lawless Park.
+          </div>
+        </div>
+      </div>
+
       {announcements.length > 0 && (
         <div style={{ padding: "12px 16px 0" }}>
           {announcements.slice(0, 2).map((a) => (
@@ -719,7 +706,10 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{next.time} · {next.pitch}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{next.time}</span>
+                <PitchBadge pitch={next.pitch} />
+              </div>
               <StatusPill status={next.status} />
             </div>
             <MatchRow match={next} teamById={teamById} />
@@ -852,7 +842,10 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
         {teamMatches.map((m) => (
           <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time} · {m.pitch}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time}</span>
+                <PitchBadge pitch={m.pitch} />
+              </div>
               <StatusPill status={m.status} />
             </div>
             <MatchRow match={m} teamById={teamById} />
@@ -870,19 +863,8 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
 
 function ClubsShowcase({ clubs, setScreen }) {
   return (
-    <div style={{ background: "#fff", padding: "14px 0 10px", borderBottom: `1px solid ${C.pitch}14` }}>
-      <div style={{ padding: "0 16px", marginBottom: 10, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 16, color: C.ink }}>
-          8 Clubs. One Blitz.
-        </span>
-        <button
-          onClick={() => setScreen("teams")}
-          style={{ background: "none", border: "none", fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.pitch, cursor: "pointer" }}
-        >
-          See all →
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 14, overflowX: "auto", padding: "4px 16px 6px" }}>
+    <div style={{ background: "#fff", padding: "12px 12px 10px", borderBottom: `1px solid ${C.pitch}14` }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
         {clubs.map((c) => (
           <button
             key={c.id}
@@ -893,29 +875,56 @@ function ClubsShowcase({ clubs, setScreen }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 6,
-              flexShrink: 0,
-              width: 72,
+              gap: 4,
               cursor: "pointer",
+              padding: 0,
+              minWidth: 0,
             }}
           >
             <div
               style={{
-                width: 64,
-                height: 64,
+                width: 52,
+                height: 52,
                 borderRadius: "50%",
-                padding: 3,
+                padding: 2.5,
                 background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
               }}
             >
-              <TeamBadge team={c} size={58} />
+              <TeamBadge team={c} size={47} />
             </div>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
               {c.name}
             </span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PitchBadge({ pitch }) {
+  const num = (pitch.match(/\d+/) || [])[0] || "?";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+      <div
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: C.pitch,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Oswald, sans-serif",
+          fontWeight: 700,
+          fontSize: 11,
+          flexShrink: 0,
+        }}
+      >
+        {num}
+      </div>
+      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>Pitch {num}</span>
     </div>
   );
 }
@@ -944,7 +953,7 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
             {groups[time].map((m) => (
               <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.pitch}</span>
+                  <PitchBadge pitch={m.pitch} />
                   <StatusPill status={m.status} />
                 </div>
                 <MatchRow match={m} teamById={teamById} />
@@ -1001,21 +1010,28 @@ function StandingsScreen({ teams, matches, sponsors }) {
       <SponsorStrip sponsors={sponsors} tier="silver" />
       <div style={{ padding: 16 }}>
         <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, padding: "8px 8px", textTransform: "uppercase" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2.1fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, padding: "8px 8px", textTransform: "uppercase" }}>
             <div>Team</div><div style={{ textAlign: "center" }}>P</div><div style={{ textAlign: "center" }}>W</div><div style={{ textAlign: "center" }}>D</div><div style={{ textAlign: "center" }}>L</div><div style={{ textAlign: "center" }}>Pts</div>
           </div>
-          {rows.map((r, i) => (
-            <div key={r.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", padding: "9px 8px", borderTop: `1px solid ${C.pitch}14`, alignItems: "center" }}>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {i + 1}. {r.name}
+          {rows.map((r, i) => {
+            const teamObj = teams.find((t) => t.id === r.id);
+            return (
+              <div key={r.id} style={{ display: "grid", gridTemplateColumns: "2.1fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", padding: "7px 8px", borderTop: `1px solid ${C.pitch}14`, alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>{i + 1}.</span>
+                  {teamObj && <TeamBadge team={teamObj} size={22} />}
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.name}
+                  </span>
+                </div>
+                <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.played}</div>
+                <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.won}</div>
+                <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.drawn}</div>
+                <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.lost}</div>
+                <div style={{ textAlign: "center", fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
               </div>
-              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.played}</div>
-              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.won}</div>
-              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.drawn}</div>
-              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.lost}</div>
-              <div style={{ textAlign: "center", fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div style={{ marginTop: 10, fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, lineHeight: 1.5 }}>
           Win = 3 pts, draw = 1 pt, loss = 0. Score difference is not used as a tiebreaker — level teams are separated by head-to-head result, then a coin toss.
@@ -1225,6 +1241,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
     return (
       <div>
         <TopBar title="Food ordering" />
+        <SponsorStrip sponsors={sponsors} tier="silver" />
         <div style={{ padding: 16 }}>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, marginBottom: 12 }}>
             On the day each club gets its own private link straight to this form. For now, pick your club below.
@@ -2020,7 +2037,7 @@ export default function App() {
       <div style={{ textAlign: "center", padding: "6px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}` }}>
         <button
           onClick={() => setScreen("admin")}
-          style={{ background: "none", border: "none", color: "#B89A8E", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
+          style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
         >
           Organiser login
         </button>
