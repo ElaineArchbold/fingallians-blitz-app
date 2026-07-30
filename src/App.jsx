@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone, Eye, EyeOff } from "lucide-react";
+import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone, Eye, EyeOff, Shield } from "lucide-react";
 
 /* ---------- Design tokens (matched to the real club crest: red / black / gold) ---------- */
 const C = {
@@ -319,7 +319,7 @@ function BottomNav({ screen, setScreen }) {
     { key: "today", label: "Home", icon: Home },
     { key: "fixtures", label: "Fixtures", icon: Trophy },
     { key: "standings", label: "Standings", icon: Users },
-    { key: "food", label: "Food", icon: UtensilsCrossed },
+    { key: "team", label: "Team", icon: Shield },
     { key: "info", label: "Info", icon: Info },
   ];
   return (
@@ -355,7 +355,7 @@ function BottomNav({ screen, setScreen }) {
               cursor: "pointer",
             }}
           >
-            <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
+            <Icon size={20} strokeWidth={active ? 2.2 : 1.8} fill={active ? C.line : "none"} />
             <span style={{ fontSize: 10, fontFamily: "Inter, sans-serif", fontWeight: active ? 700 : 500 }}>
               {it.label}
             </span>
@@ -820,18 +820,24 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
   );
 }
 
+function finalIcon(label) {
+  if (!label) return "";
+  return label.includes("Shield") ? "🛡️" : "🏆";
+}
+
 function MatchRow({ match, teamById }) {
   const aBlank = !match.teamA;
   const bBlank = !match.teamB;
 
   if (match.finalLabel && (aBlank || bBlank)) {
+    const isShield = match.finalLabel.includes("Shield");
     return (
       <div style={{ textAlign: "center", padding: "8px 0" }}>
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 16, color: C.pitch, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          🏆 {match.finalLabel}
+          {finalIcon(match.finalLabel)} {match.finalLabel}
         </div>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginTop: 2 }}>
-          Teams to be confirmed — group winners
+          Teams to be confirmed — group {isShield ? "runners-up" : "winners"}
         </div>
       </div>
     );
@@ -843,7 +849,7 @@ function MatchRow({ match, teamById }) {
     <div>
       {match.finalLabel && (
         <div style={{ textAlign: "center", fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 11, color: C.sliotar, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
-          🏆 {match.finalLabel}
+          {finalIcon(match.finalLabel)} {match.finalLabel}
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -1084,17 +1090,32 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
             }}
           >
             <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 14, color: "#fff", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, textAlign: "center" }}>
-              🏆 Finals — {finals[0].time}
+              🏆 Finals Day
             </div>
-            {finals.map((m) => (
-              <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: 12, marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <PitchBadge pitch={m.pitch} />
-                  <StatusPill status={m.status} />
+            {Object.entries(
+              finals.reduce((acc, m) => {
+                acc[m.time] = acc[m.time] || [];
+                acc[m.time].push(m);
+                return acc;
+              }, {})
+            )
+              .sort(([t1], [t2]) => t1.localeCompare(t2))
+              .map(([time, ms]) => (
+                <div key={time}>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: "#fff", opacity: 0.85, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                    {time} — {ms[0].finalLabel?.includes("Shield") ? "🛡️ Shield Finals" : "🏆 Cup Finals"}
+                  </div>
+                  {ms.map((m) => (
+                    <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <PitchBadge pitch={m.pitch} />
+                        <StatusPill status={m.status} />
+                      </div>
+                      <MatchRow match={m} teamById={teamById} />
+                    </div>
+                  ))}
                 </div>
-                <MatchRow match={m} teamById={teamById} />
-              </div>
-            ))}
+              ))}
           </div>
         )}
 
@@ -1204,50 +1225,61 @@ function StandingsScreen({ teams, matches, sponsors }) {
           </div>
         )}
 
+        {labeled.length > 0 && (
+          <div style={{ background: "#fff", border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 12, marginBottom: 16, display: "flex", gap: 14, justifyContent: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 16 }}>🏆</span>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink }}>1st place → Cup Final</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 16 }}>🛡️</span>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink }}>2nd place → Shield Final</span>
+            </div>
+          </div>
+        )}
+
         {labeled.map((grp) => {
           const rows = computeStandings(grp.teams, matches);
           return (
-            <div key={`${grp.grade}${grp.num}`} style={{ marginBottom: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>
-                  {grp.grade} Grade — Group {grp.num}
-                </div>
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, color: C.sliotar, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                  Winner → {grp.grade} Final
-                </span>
+            <div key={`${grp.grade}${grp.num}`} style={{ marginBottom: 20 }}>
+              <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
+                {grp.grade} Grade — Group {grp.num}
               </div>
               <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "2.1fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, padding: "8px 8px", textTransform: "uppercase" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2.3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, padding: "9px 8px", textTransform: "uppercase" }}>
                   <div>Team</div><div style={{ textAlign: "center" }}>P</div><div style={{ textAlign: "center" }}>W</div><div style={{ textAlign: "center" }}>D</div><div style={{ textAlign: "center" }}>L</div><div style={{ textAlign: "center" }}>Pts</div>
                 </div>
                 {rows.map((r, i) => {
                   const teamObj = teams.find((t) => t.id === r.id);
-                  const leading = i === 0 && r.played > 0;
+                  const started = r.played > 0;
+                  const isCup = i === 0 && started;
+                  const isShield = i === 1 && started;
                   return (
                     <div
                       key={r.id}
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "2.1fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr",
-                        padding: "7px 8px",
+                        gridTemplateColumns: "2.3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr",
+                        padding: "9px 8px",
                         borderTop: `1px solid ${C.pitch}14`,
                         alignItems: "center",
-                        background: leading ? `${C.sliotar}14` : "transparent",
+                        background: isCup ? `${C.sliotar}22` : isShield ? `${C.pitch}0F` : "transparent",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>{i + 1}.</span>
-                        {teamObj && <TeamBadge team={teamObj} size={22} />}
-                        <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                        <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 12.5, color: C.inkSoft, flexShrink: 0 }}>{i + 1}</span>
+                        {teamObj && <TeamBadge team={teamObj} size={26} />}
+                        <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {r.name}
                         </span>
-                        {leading && <span style={{ fontSize: 11, flexShrink: 0 }}>🏆</span>}
+                        {isCup && <span style={{ fontSize: 13, flexShrink: 0 }}>🏆</span>}
+                        {isShield && <span style={{ fontSize: 13, flexShrink: 0 }}>🛡️</span>}
                       </div>
-                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.played}</div>
-                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.won}</div>
-                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.drawn}</div>
-                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.lost}</div>
-                      <div style={{ textAlign: "center", fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
+                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 13 }}>{r.played}</div>
+                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 13 }}>{r.won}</div>
+                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 13 }}>{r.drawn}</div>
+                      <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 13 }}>{r.lost}</div>
+                      <div style={{ textAlign: "center", fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.pitch }}>{r.points}</div>
                     </div>
                   );
                 })}
@@ -1257,7 +1289,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
         })}
 
         <div style={{ marginTop: 6, fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, lineHeight: 1.5 }}>
-          Win = 3 pts, draw = 1 pt, loss = 0. Score difference is not used as a tiebreaker — level teams are separated by head-to-head result, then a coin toss. 🏆 marks the team currently topping each group, in line to reach that grade's final.
+          Win = 3 pts, draw = 1 pt, loss = 0. Score difference is not used as a tiebreaker — level teams are separated by head-to-head result, then a coin toss. 🏆 marks the team currently on course for the Cup Final (1st in group), 🛡️ for the Shield Final (2nd in group).
         </div>
       </div>
     </div>
@@ -1428,7 +1460,7 @@ function Stepper({ label, value, onChange, sub }) {
   );
 }
 
-function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
+function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedded }) {
   const [clubId, setClubId] = useState(defaultClubId || null);
   const [order, setOrder] = useState(null);
   const [saved, setSaved] = useState(false);
@@ -1461,7 +1493,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
     }
   }, [clubId]);
 
-  if (!clubId) {
+  if (!clubId && !embedded) {
     return (
       <div>
         <TopBar title="Food ordering" />
@@ -1497,13 +1529,15 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
     );
   }
 
+  if (!clubId) return null; // embedded with no club yet — parent handles the prompt
+
   const team = clubs.find((t) => t.id === clubId);
 
   if (!authedClub) {
     return (
-      <div style={{ padding: 16 }}>
-        <TopBar title={team.name} onBack={() => setClubId(null)} />
-        <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
+      <div style={embedded ? {} : { padding: 16 }}>
+        {!embedded && <TopBar title={team.name} onBack={() => setClubId(null)} />}
+        <div style={{ marginTop: embedded ? 0 : 20, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <TeamBadge team={team} size={40} />
             <div>
@@ -1556,9 +1590,9 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
   const totalLunches = order?.burgers || 0;
 
   return (
-    <div style={{ paddingBottom: 90 }}>
-      <TopBar title={team.name} onBack={() => setClubId(null)} />
-      <div style={{ padding: 16 }}>
+    <div style={{ paddingBottom: embedded ? 10 : 90 }}>
+      {!embedded && <TopBar title={team.name} onBack={() => setClubId(null)} />}
+      <div style={embedded ? {} : { padding: 16 }}>
         <div style={{ background: C.turf, color: C.line, borderRadius: 12, padding: 14, marginBottom: 14 }}>
           <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 16 }}>{team.name} — food order</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: "#E9DAD0", marginTop: 4 }}>Order by 15 August</div>
@@ -1597,22 +1631,19 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
             <Check size={16} /> Order saved. Reopen this link any time to amend it.
           </div>
         )}
-      </div>
 
-      <div style={{ position: "fixed", bottom: 56, left: 0, right: 0, padding: "12px 12px", background: "linear-gradient(to top, #fff, #fff0)", display: "flex", justifyContent: "center" }}>
         <button
           onClick={async () => {
             await saveOrder(clubId, order);
             setSaved(true);
           }}
           style={{
-            width: "auto",
-            minWidth: 200,
+            width: "100%",
             background: C.sliotar,
             color: C.ink,
             border: "none",
             borderRadius: 30,
-            padding: "14px 44px",
+            padding: "14px 20px",
             fontFamily: "Poppins, sans-serif",
             fontWeight: 600,
             fontSize: 16,
@@ -1623,6 +1654,125 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
         >
           Save order
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub, myClubName, onOpenWelcome, onChangeClub }) {
+  if (!myClub) {
+    return (
+      <div>
+        <TopBar title="My Team" />
+        <div style={{ padding: 16 }}>
+          <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 14, padding: 24, textAlign: "center" }}>
+            <div style={{ fontSize: 34, marginBottom: 8 }}>👋</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, marginBottom: 6 }}>
+              Choose your club to get started
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.5 }}>
+              See your team's fixtures, standing, and food order all in one place.
+            </div>
+            <button
+              onClick={onOpenWelcome}
+              style={{ background: C.pitch, color: "#fff", border: "none", borderRadius: 30, padding: "12px 28px", fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+            >
+              Choose your club
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const club = clubs.find((c) => c.id === myClub);
+  const teamA = teams.find((t) => t.id === `${myClub}A`);
+  const teamB = teams.find((t) => t.id === `${myClub}B`);
+  const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
+  const myTeamIds = [teamA?.id, teamB?.id].filter(Boolean);
+  const clubMatches = matches
+    .filter((m) => myTeamIds.includes(m.teamA) || myTeamIds.includes(m.teamB))
+    .sort((a, b) => a.time.localeCompare(b.time));
+
+  const groupedTeams = computeGroups(teams, matches);
+  const groupInfoFor = (teamId) => {
+    const grp = groupedTeams.find((g) => g.some((t) => t.id === teamId));
+    if (!grp) return null;
+    const rows = computeStandings(grp, matches);
+    const idx = rows.findIndex((r) => r.id === teamId);
+    if (idx === -1) return null;
+    return { position: idx + 1, total: rows.length, points: rows[idx].points, played: rows[idx].played };
+  };
+  const infoA = teamA ? groupInfoFor(teamA.id) : null;
+  const infoB = teamB ? groupInfoFor(teamB.id) : null;
+
+  return (
+    <div style={{ paddingBottom: 20 }}>
+      <TopBar title={club?.name || "My Team"} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+          {club && <TeamBadge team={club} size={52} />}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 16, color: C.ink }}>{club?.name}</div>
+            <button
+              onClick={onChangeClub}
+              style={{ background: "none", border: "none", padding: 0, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.pitch, fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
+            >
+              Not your club? Change
+            </button>
+          </div>
+        </div>
+
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 8 }}>
+          Your Standing
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+          {[{ label: "A Team", info: infoA }, { label: "B Team", info: infoB }].map(({ label, info }) => (
+            <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, textAlign: "center" }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
+              {info ? (
+                <>
+                  <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 20, color: C.pitch }}>
+                    {info.position === 1 ? "🏆 " : info.position === 2 ? "🛡️ " : ""}{info.position}{info.position === 1 ? "st" : info.position === 2 ? "nd" : info.position === 3 ? "rd" : "th"}
+                  </div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>of {info.total} · {info.points} pts</div>
+                </>
+              ) : (
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, padding: "6px 0" }}>Not started</div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 8 }}>
+          Your Fixtures
+        </div>
+        {clubMatches.length === 0 && (
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, marginBottom: 20 }}>
+            No fixtures yet for your club — check back once the organiser adds them.
+          </div>
+        )}
+        <div style={{ marginBottom: 20 }}>
+          {clubMatches.map((m) => (
+            <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time}</span>
+                  <PitchBadge pitch={m.pitch} />
+                </div>
+                <StatusPill status={m.status} />
+              </div>
+              <MatchRow match={m} teamById={teamById} />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 8 }}>
+          Food Order
+        </div>
+        <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14 }}>
+          <FoodScreen clubs={clubs} orders={orders} saveOrder={saveOrder} sponsors={sponsors} defaultClubId={myClub} embedded />
+        </div>
       </div>
     </div>
   );
@@ -1648,12 +1798,24 @@ function minutesToLabel(totalMin) {
   return `${hh}:${String(mm).padStart(2, "0")}`;
 }
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function generateGroupFixtures(teams) {
   // Keep grades separate — A teams only ever play A teams, B only ever play B.
-  const aTeams = teams.filter((t) => t.id.endsWith("A"));
-  const bTeams = teams.filter((t) => t.id.endsWith("B"));
+  const aTeams = shuffle(teams.filter((t) => t.id.endsWith("A")));
+  const bTeams = shuffle(teams.filter((t) => t.id.endsWith("B")));
 
-  // Each grade (8 teams) splits into 2 groups of 4.
+  // Each grade (8 teams) splits into 2 groups of 4. Shuffling first means the
+  // same club's A and B teams don't always land in the same-numbered group,
+  // and re-running the generator gives a fresh draw rather than the same
+  // fixed pairing every time.
   const groupsA = [[], []];
   aTeams.forEach((t, i) => groupsA[i % 2].push(t));
   const groupsB = [[], []];
@@ -1671,13 +1833,13 @@ function generateGroupFixtures(teams) {
   let guard = 0;
   const lastPlayedSlot = {}; // teamId -> slot index they last played in
 
-  while (pool.length && guard < 100) {
+  while (pool.length && guard < 200) {
     guard++;
     const used = new Set();
     const slotMatches = [];
 
-    // Pass 1: only take matches where neither team played in the immediately
-    // preceding slot — guarantees a rest gap wherever the pool allows it.
+    // Only take matches where neither team played in the immediately preceding
+    // slot. No fallback that allows back-to-back — the rest gap is absolute.
     for (let i = 0; i < pool.length && slotMatches.length < PITCHES.length; i++) {
       const m = pool[i];
       const aRested = lastPlayedSlot[m.a.id] === undefined || lastPlayedSlot[m.a.id] < slotIndex - 1;
@@ -1690,19 +1852,13 @@ function generateGroupFixtures(teams) {
         i--;
       }
     }
-    // Pass 2 (fallback): if the pitches still aren't full, allow back-to-back
-    // matches rather than leaving a pitch empty — better than wasting the slot.
-    for (let i = 0; i < pool.length && slotMatches.length < PITCHES.length; i++) {
-      const m = pool[i];
-      if (!used.has(m.a.id) && !used.has(m.b.id)) {
-        slotMatches.push(m);
-        used.add(m.a.id);
-        used.add(m.b.id);
-        pool.splice(i, 1);
-        i--;
-      }
+
+    if (slotMatches.length === 0) {
+      // Nobody eligible to rest into this slot yet (everyone just played) —
+      // skip the slot forward rather than forcing a back-to-back match.
+      slotIndex++;
+      continue;
     }
-    if (slotMatches.length === 0) break; // safety net, shouldn't trigger
 
     const timeLabel = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
 
@@ -1725,28 +1881,47 @@ function generateGroupFixtures(teams) {
     slotIndex++;
   }
 
-  // Finals — teams left blank until group winners are known. Played on the main
-  // pitch (Pitch 2 and Pitch 3), one slot after the last group match.
-  const finalsTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
+  // Finals — teams left blank until group placings are known.
+  // Cup (group winners) get the main pitch first; Shield (runners-up) follow
+  // in the next slot on the same two pitches. Both grades' finals run in parallel.
+  const cupTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
   fixtures.push({
-    id: `final-a-${Date.now()}`,
-    time: finalsTime,
+    id: `final-acup-${Date.now()}`,
+    time: cupTime,
     pitch: "Pitch 2",
-    teamA: "",
-    teamB: "",
+    teamA: "", teamB: "",
     goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
     status: "scheduled",
-    finalLabel: "A Final",
+    finalLabel: "A Cup Final",
   });
   fixtures.push({
-    id: `final-b-${Date.now()}`,
-    time: finalsTime,
+    id: `final-bcup-${Date.now()}`,
+    time: cupTime,
     pitch: "Pitch 3",
-    teamA: "",
-    teamB: "",
+    teamA: "", teamB: "",
     goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
     status: "scheduled",
-    finalLabel: "B Final",
+    finalLabel: "B Cup Final",
+  });
+
+  const shieldTime = minutesToLabel(START_HOUR * 60 + START_MIN + (slotIndex + 1) * SLOT_MINUTES);
+  fixtures.push({
+    id: `final-ashield-${Date.now()}`,
+    time: shieldTime,
+    pitch: "Pitch 2",
+    teamA: "", teamB: "",
+    goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
+    status: "scheduled",
+    finalLabel: "A Shield Final",
+  });
+  fixtures.push({
+    id: `final-bshield-${Date.now()}`,
+    time: shieldTime,
+    pitch: "Pitch 3",
+    teamA: "", teamB: "",
+    goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
+    status: "scheduled",
+    finalLabel: "B Shield Final",
   });
 
   return fixtures;
@@ -1933,7 +2108,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Splits the 8 A teams and 8 B teams into their own groups of 4 (As only ever play As, Bs only ever play Bs), round-robins within each group (24 group matches total), and spreads them across your 3 pitches at 25-minute intervals from 10:00 — no team double-booked in the same slot, and every team gets at least one rest slot between its own matches wherever the schedule allows it. Adds an A Final and a B Final at the end on the main pitch (Pitch 2 and 3), teams left blank until group winners are known. This replaces any fixtures currently listed below.
+              Splits the 8 A teams and 8 B teams into their own groups of 4 (As only ever play As, Bs only ever play Bs), round-robins within each group (24 group matches total), and spreads them across your 3 pitches at 25-minute intervals from 10:00 — no team double-booked in the same slot, and every team is guaranteed at least one rest slot between its own matches (a pitch may sit idle for a slot rather than ever break this). Adds 4 finals on the main pitch (Pitch 2 and 3): A Cup, B Cup (group winners), then A Shield, B Shield (group runners-up) 25 minutes later. All teams left blank until group placings are known. This replaces any fixtures currently listed below.
             </div>
             <button
               onClick={() => {
@@ -1944,7 +2119,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               }}
               style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
-              Generate schedule (24 group + 2 finals)
+              Generate schedule (24 group + 4 finals)
             </button>
           </div>
 
@@ -2034,7 +2209,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             const a = teams.find((t) => t.id === m.teamA);
             const b = teams.find((t) => t.id === m.teamB);
             // Work out which grade this fixture is restricted to, if any.
-            const grade = m.finalLabel === "A Final" ? "A" : m.finalLabel === "B Final" ? "B" : m.teamA ? m.teamA.slice(-1) : m.teamB ? m.teamB.slice(-1) : null;
+            const grade = m.finalLabel?.startsWith("A ") ? "A" : m.finalLabel?.startsWith("B ") ? "B" : m.teamA ? m.teamA.slice(-1) : m.teamB ? m.teamB.slice(-1) : null;
             const teamOptions = grade ? teams.filter((t) => t.id.endsWith(grade)) : teams;
             return (
               <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
@@ -2044,7 +2219,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                     <PitchBadge pitch={m.pitch} />
                     {m.finalLabel && (
                       <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, color: C.sliotar, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                        🏆 {m.finalLabel}
+                        {finalIcon(m.finalLabel)} {m.finalLabel}
                       </span>
                     )}
                   </div>
@@ -2292,6 +2467,29 @@ function MiniScoreInput({ label, value, onChange }) {
   );
 }
 
+function playAnnouncementDing() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = now + i * 0.14;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.35, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.7);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.75);
+    });
+  } catch {
+    // Web Audio unavailable or blocked — fail silently, the modal still shows.
+  }
+}
+
 /* ================= APP ================= */
 export default function App() {
   const [loaded, setLoaded] = useState(false);
@@ -2301,6 +2499,7 @@ export default function App() {
   const [announcements, setAnnouncements] = useState(DEFAULT_ANNOUNCEMENTS);
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
   const [auditLog, setAuditLog] = useState([]);
+  const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
   const [selectedTeam, setSelectedTeam] = useState(null);
 
   const [myClub, setMyClub] = useState(() => {
@@ -2336,6 +2535,19 @@ export default function App() {
     setScreen("welcome");
   }, []);
 
+  const checkForNewAnnouncement = useCallback((list) => {
+    if (!list || list.length === 0) return;
+    const newest = list[0]; // announcements are unshifted, so index 0 is newest
+    let seenId = null;
+    try {
+      seenId = localStorage.getItem("seenAnnouncementId");
+    } catch {}
+    if (newest.id !== seenId) {
+      setAnnouncementModal(newest);
+      playAnnouncementDing();
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       const [t, m, o, a, s, log] = await Promise.all([
@@ -2353,8 +2565,29 @@ export default function App() {
       setSponsors(s);
       setAuditLog(log);
       setLoaded(true);
+      checkForNewAnnouncement(a);
     })();
   }, []);
+
+  // Poll for new announcements while the app stays open, so someone already
+  // using the app sees the modal+ding as soon as an organiser posts one.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const latest = await loadShared("announcements", DEFAULT_ANNOUNCEMENTS);
+      setAnnouncements(latest);
+      checkForNewAnnouncement(latest);
+    }, 25000);
+    return () => clearInterval(interval);
+  }, [checkForNewAnnouncement]);
+
+  const dismissAnnouncementModal = useCallback(() => {
+    if (announcementModal) {
+      try {
+        localStorage.setItem("seenAnnouncementId", announcementModal.id);
+      } catch {}
+    }
+    setAnnouncementModal(null);
+  }, [announcementModal]);
 
   const logAction = useCallback((adminName, action) => {
     setAuditLog((prev) => {
@@ -2414,7 +2647,7 @@ export default function App() {
   else if (screen === "teamDetail") body = <TeamDetailScreen teamId={selectedTeam} teams={teams} matches={matches} setScreen={setScreen} />;
   else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} />;
   else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} />;
-  else if (screen === "food") body = <FoodScreen clubs={clubs} orders={orders} saveOrder={saveOrder} sponsors={sponsors} defaultClubId={myClub} />;
+  else if (screen === "team") body = <TeamScreen teams={teams} clubs={clubs} matches={matches} orders={orders} saveOrder={saveOrder} sponsors={sponsors} myClub={myClub} myClubName={myClubObj?.name} onOpenWelcome={openWelcome} onChangeClub={changeClub} />;
   else if (screen === "info") body = <InfoScreen sponsors={sponsors} />;
   else if (screen === "admin")
     body = (
@@ -2447,6 +2680,60 @@ export default function App() {
           Organiser login
         </button>
       </div>
+
+      {announcementModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(20,17,16,0.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+          onClick={dismissAnnouncementModal}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 18,
+              padding: "28px 24px",
+              maxWidth: 340,
+              width: "100%",
+              textAlign: "center",
+              border: `3px solid ${C.sliotar}`,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ fontSize: 42, marginBottom: 10 }}>📢</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 12, color: C.pitch, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>
+              Announcement
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 16, color: C.ink, lineHeight: 1.5, marginBottom: 22 }}>
+              {announcementModal.text}
+            </div>
+            <button
+              onClick={dismissAnnouncementModal}
+              style={{
+                background: C.pitch,
+                color: "#fff",
+                border: "none",
+                borderRadius: 30,
+                padding: "12px 36px",
+                fontFamily: "Poppins, sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
