@@ -2027,7 +2027,7 @@ function shuffle(arr) {
   return a;
 }
 
-const LUNCH_MINUTES = 60;
+const LUNCH_MINUTES = 50; // exactly 2 x 25-minute slots — no rounding needed
 const LUNCH_MIN_SLOTS = Math.ceil(LUNCH_MINUTES / SLOT_MINUTES);
 
 // Fills pitches for consecutive slots from the given pool, respecting the absolute
