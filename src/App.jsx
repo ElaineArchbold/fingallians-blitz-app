@@ -98,12 +98,12 @@ const DEFAULT_ANNOUNCEMENTS = [
 
 const DEFAULT_ORDERS = {};
 const DEFAULT_SPONSORS = [
-  { id: "s1", name: "Gold Sponsor 1", tier: "gold", url: "", logo: "" },
-  { id: "s2", name: "Gold Sponsor 2", tier: "gold", url: "", logo: "" },
-  { id: "s3", name: "Silver Sponsor 1", tier: "silver", url: "", logo: "" },
-  { id: "s4", name: "Silver Sponsor 2", tier: "silver", url: "", logo: "" },
-  { id: "s5", name: "Supporter 1", tier: "supporter", url: "", logo: "" },
-  { id: "s6", name: "Supporter 2", tier: "supporter", url: "", logo: "" },
+  { id: "s1", name: "Sponsor 1", tier: "gold", url: "", logo: "" },
+  { id: "s2", name: "Sponsor 2", tier: "gold", url: "", logo: "" },
+  { id: "s3", name: "Sponsor 3", tier: "silver", url: "", logo: "" },
+  { id: "s4", name: "Sponsor 4", tier: "silver", url: "", logo: "" },
+  { id: "s5", name: "Sponsor 5", tier: "supporter", url: "", logo: "" },
+  { id: "s6", name: "Sponsor 6", tier: "supporter", url: "", logo: "" },
 ];
 
 // Named organiser logins — all have identical full access (fixtures, scores, all food orders,
@@ -431,7 +431,7 @@ function BottomNav({ screen, setScreen }) {
 }
 
 /* ---------- Header ---------- */
-function TopBar({ title, onBack, right }) {
+function TopBar({ title, onBack, right, followedTeam }) {
   return (
     <div
       style={{
@@ -458,6 +458,7 @@ function TopBar({ title, onBack, right }) {
         {title}
       </div>
       {right}
+      {!right && followedTeam && <TeamBadge team={followedTeam} size={30} />}
     </div>
   );
 }
@@ -690,7 +691,7 @@ function WelcomeScreen({ clubs, onChoose, onClose, myClubName }) {
   );
 }
 
-function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, onChangeClub, onOpenWelcome, lunchWindows }) {
+function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, myClubObj, onChangeClub, onOpenWelcome, lunchWindows }) {
   const next = matches.find((m) => m.status !== "finished");
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   return (
@@ -713,7 +714,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
           >
             <img src={BADGE_LOGO} alt="Fingallians badge" style={{ width: "72%", height: "72%", objectFit: "contain" }} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, letterSpacing: 1.5, color: "#F5D9A0", textTransform: "uppercase" }}>
               {EVENT.date}
             </div>
@@ -721,6 +722,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
               {EVENT.name}
             </div>
           </div>
+          {myClubObj && <TeamBadge team={myClubObj} size={44} />}
         </div>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#E9DAD0", marginTop: 4 }}>{EVENT.venue}</div>
 
@@ -792,15 +794,13 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
               </div>
             ))}
           </div>
-          {lunchWindows?.group1 && lunchWindows?.group2 && (
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)" }}>
-              <div style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff" }}>{lunchWindows.group1.from}–{lunchWindows.group1.to}</div>
-                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Lunch — Group 1 clubs</div>
+          {lunchWindows && lunchWindows.length > 0 && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", textAlign: "center" }}>
+              <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff" }}>
+                {lunchWindows[0].from} – {lunchWindows[lunchWindows.length - 1].to}
               </div>
-              <div style={{ textAlign: "center", flex: 1 }}>
-                <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff" }}>{lunchWindows.group2.from}–{lunchWindows.group2.to}</div>
-                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>Lunch — Group 2 clubs</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>
+                Lunch — staggered in pairs, 2 clubs at a time (check the Team tab for your exact time)
               </div>
             </div>
           )}
@@ -1130,7 +1130,7 @@ function PitchBadge({ pitch }) {
   );
 }
 
-function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
+function FixturesScreen({ teams, clubs, matches, sponsors, setScreen, myClubObj }) {
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   const groupMatches = matches.filter((m) => !m.finalLabel);
   const finals = matches.filter((m) => m.finalLabel);
@@ -1141,7 +1141,7 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
   });
   return (
     <div>
-      <TopBar title="Fixtures" />
+      <TopBar title="Fixtures" followedTeam={myClubObj} />
       <ClubsShowcase clubs={clubs} setScreen={setScreen} />
       <SponsorStrip sponsors={sponsors} tier="silver" />
       <div style={{ padding: 16 }}>
@@ -1322,7 +1322,7 @@ function autoFillFinals(matchesList, teams) {
   });
 }
 
-function StandingsScreen({ teams, matches, sponsors }) {
+function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
   const groupedTeams = computeGroups(teams, matches);
   let aCount = 0, bCount = 0;
   const labeled = groupedTeams
@@ -1335,7 +1335,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
 
   return (
     <div>
-      <TopBar title="Standings" />
+      <TopBar title="Standings" followedTeam={myClubObj} />
       <SponsorStrip sponsors={sponsors} tier="silver" />
       <div style={{ padding: 16 }}>
         {labeled.length === 0 && (
@@ -1415,7 +1415,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
   );
 }
 
-function InfoScreen({ sponsors, announcements }) {
+function InfoScreen({ sponsors, announcements, myClubObj }) {
   const items = [
     {
       title: "Arrival & registration",
@@ -1465,7 +1465,7 @@ function InfoScreen({ sponsors, announcements }) {
   ];
   return (
     <div>
-      <TopBar title="Event info" />
+      <TopBar title="Event info" followedTeam={myClubObj} />
       <div style={{ padding: 16 }}>
         {announcements && announcements.length > 0 && (
           <div
@@ -1997,11 +1997,7 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
           A fixed break, built into the schedule — your A and B teams eat at the same time.
         </div>
         {(() => {
-          const myLunch = lunchWindows?.group1?.clubs?.includes(myClub)
-            ? lunchWindows.group1
-            : lunchWindows?.group2?.clubs?.includes(myClub)
-            ? lunchWindows.group2
-            : null;
+          const myLunch = lunchWindows?.find((w) => w.clubs?.includes(myClub)) || null;
           return (
             <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 20, textAlign: "center" }}>
               {myLunch ? (
@@ -2085,11 +2081,11 @@ const LUNCH_MIN_SLOTS = Math.ceil(LUNCH_MINUTES / SLOT_MINUTES);
 // rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
 // pool empties sooner, so a lunch block can be padded to a real fixed duration.
 // Mutates `pool` and `lastPlayedSlot`; returns the next free slot index.
-function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0) {
+function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null) {
   let slotIndex = startSlot;
   let slotsUsed = 0;
   let guard = 0;
-  while ((pool.length > 0 || slotsUsed < minSlots) && guard < 200) {
+  while (guard < 200) {
     guard++;
     const used = new Set();
     const slotMatches = [];
@@ -2097,7 +2093,8 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0) {
       const m = pool[i];
       const aRested = lastPlayedSlot[m.a.id] === undefined || lastPlayedSlot[m.a.id] < slotIndex - 1;
       const bRested = lastPlayedSlot[m.b.id] === undefined || lastPlayedSlot[m.b.id] < slotIndex - 1;
-      if (!used.has(m.a.id) && !used.has(m.b.id) && aRested && bRested) {
+      const excluded = excludeTeamIds && (excludeTeamIds.has(m.a.id) || excludeTeamIds.has(m.b.id));
+      if (!excluded && !used.has(m.a.id) && !used.has(m.b.id) && aRested && bRested) {
         slotMatches.push(m);
         used.add(m.a.id);
         used.add(m.b.id);
@@ -2123,15 +2120,23 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0) {
     }
     slotIndex++;
     slotsUsed++;
-    if (pool.length === 0 && slotsUsed >= minSlots) break;
+
+    if (excludeTeamIds) {
+      // Exclusion phase (a lunch window): run for exactly minSlots and stop.
+      // Whatever's left in the pool is deliberately deferred to a later phase —
+      // it is NOT this phase's job to finish, so don't keep looping over it.
+      if (slotsUsed >= minSlots) break;
+    } else {
+      // Normal phase (no exclusions): finish once the pool is actually empty.
+      if (pool.length === 0 && slotsUsed >= minSlots) break;
+    }
   }
   return slotIndex;
 }
 
 function generateGroupFixtures(teams) {
-  // Group by CLUB, not by grade — this is what lets a club's A and B teams
-  // share the exact same lunch window, rather than one grade eating while
-  // the other grade is still on the pitch.
+  // Group by CLUB, not by grade — a club's A and B teams always land in the
+  // same club-group, so they always share the same lunch window.
   const clubIds = [...new Set(teams.map((t) => t.clubId))];
   const shuffledClubs = shuffle(clubIds);
   const clubGroup1 = shuffledClubs.slice(0, 4);
@@ -2139,53 +2144,65 @@ function generateGroupFixtures(teams) {
 
   const teamsFor = (clubList, grade) => teams.filter((t) => clubList.includes(t.clubId) && t.id.endsWith(grade));
 
-  // "Group 1" is the same 4 clubs whether you're looking at their A team or B team.
+  // "Group 1" is the same 4 clubs whether you're looking at their A team or B team —
+  // this is the actual COMPETITION grouping (feeds the Cup/Shield finals).
   const groupsA = [teamsFor(clubGroup1, "A"), teamsFor(clubGroup2, "A")];
   const groupsB = [teamsFor(clubGroup1, "B"), teamsFor(clubGroup2, "B")];
 
   const toMatches = (round) => round.map(([a, b]) => ({ a, b }));
-  const rrAg1 = roundRobin4(groupsA[0]); // club-group-1's A-team rounds
-  const rrAg2 = roundRobin4(groupsA[1]); // club-group-2's A-team rounds
-  const rrBg1 = roundRobin4(groupsB[0]); // club-group-1's B-team rounds
-  const rrBg2 = roundRobin4(groupsB[1]); // club-group-2's B-team rounds
+  const rrAg1 = roundRobin4(groupsA[0]);
+  const rrAg2 = roundRobin4(groupsA[1]);
+  const rrBg1 = roundRobin4(groupsB[0]);
+  const rrBg2 = roundRobin4(groupsB[1]);
 
   const fixtures = [];
   const lastPlayedSlot = {};
   let slotIndex = 0;
 
-  // Block 1 & 2: everyone's first two rounds, interleaved across all 3 pitches —
-  // normal operation, every team plays twice before anyone breaks for lunch.
+  // Warm-up: everyone's first round only (8 matches) — just enough that nobody
+  // breaks for lunch before playing at least once.
   const round1All = [...toMatches(rrAg1[0]), ...toMatches(rrAg2[0]), ...toMatches(rrBg1[0]), ...toMatches(rrBg2[0])];
-  const round2All = [...toMatches(rrAg1[1]), ...toMatches(rrAg2[1]), ...toMatches(rrBg1[1]), ...toMatches(rrBg2[1])];
   slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot);
-  slotIndex = fillSlots(round2All, fixtures, slotIndex, lastPlayedSlot);
 
-  // Club-Group-1's fixed lunch break: those 4 clubs' A AND B teams play nothing
-  // during this window — same break time for both squads. Meanwhile Club-Group-2's
-  // A and B teams play their round 3 (4 matches, fits neatly across 3 pitches).
-  const group1LunchStart = slotIndex;
-  const group2Round3 = [...toMatches(rrAg2[2]), ...toMatches(rrBg2[2])];
-  slotIndex = fillSlots(group2Round3, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS);
-  const clubGroup1Lunch = {
-    from: minutesToLabel(START_HOUR * 60 + START_MIN + group1LunchStart * SLOT_MINUTES),
-    to: minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES),
-    clubs: clubGroup1,
-  };
+  // Remaining pool: rounds 2 and 3 combined (16 matches) — deliberately NOT
+  // split, so the 4 staggered lunch phases below have enough slack to actually
+  // pack well. Lunch is staggered across 4 phases of just 2 clubs (4 teams)
+  // resting at a time, instead of 4 clubs at once — keeps more pitches busy
+  // at any given moment. A match that can't be played yet (because it needs a
+  // team from the currently-resting pair) is left in the pool and picked up
+  // automatically in a later phase.
+  let remainingPool = [
+    ...toMatches(rrAg1[1]), ...toMatches(rrAg2[1]), ...toMatches(rrBg1[1]), ...toMatches(rrBg2[1]),
+    ...toMatches(rrAg1[2]), ...toMatches(rrAg2[2]), ...toMatches(rrBg1[2]), ...toMatches(rrBg2[2]),
+  ];
 
-  // Club-Group-2's fixed lunch break, straight after: Club-Group-1's A and B
-  // teams play their round 3 while Club-Group-2 rests.
-  const group2LunchStart = slotIndex;
-  const group1Round3 = [...toMatches(rrAg1[2]), ...toMatches(rrBg1[2])];
-  slotIndex = fillSlots(group1Round3, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS);
-  const clubGroup2Lunch = {
-    from: minutesToLabel(START_HOUR * 60 + START_MIN + group2LunchStart * SLOT_MINUTES),
-    to: minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES),
-    clubs: clubGroup2,
-  };
+  const lunchPairs = [
+    shuffledClubs.slice(0, 2),
+    shuffledClubs.slice(2, 4),
+    shuffledClubs.slice(4, 6),
+    shuffledClubs.slice(6, 8),
+  ];
+  const lunchWindows = [];
+  lunchPairs.forEach((pair) => {
+    const excludeIds = new Set();
+    pair.forEach((cid) => {
+      excludeIds.add(cid + "A");
+      excludeIds.add(cid + "B");
+    });
+    const phaseStart = slotIndex;
+    slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds);
+    lunchWindows.push({
+      from: minutesToLabel(START_HOUR * 60 + START_MIN + phaseStart * SLOT_MINUTES),
+      to: minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES),
+      clubs: pair,
+    });
+  });
+
+  // Mop-up: anything still unplayed (shouldn't normally be much, if anything —
+  // safety net in case a match's teams were still excluded right to the end).
+  slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot);
 
   // Finals — teams left blank until group placings are known.
-  // Cup (group winners) get the main pitch first; Shield (runners-up) follow
-  // in the next slot on the same two pitches. Both grades' finals run in parallel.
   const cupTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
   fixtures.push({
     id: `final-acup-${Date.now()}`,
@@ -2226,7 +2243,7 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Shield Final",
   });
 
-  return { fixtures, lunchWindows: { group1: clubGroup1Lunch, group2: clubGroup2Lunch } };
+  return { fixtures, lunchWindows };
 }
 
 /* ---------- Admin ---------- */
@@ -2470,7 +2487,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Splits the 8 clubs into two groups of 4 — each club's A and B teams stay together in the same group, so they always share the same lunch break. As only ever play As, Bs only ever play Bs. Schedules in stages: everyone plays rounds 1–2 interleaved across all 3 pitches, then <b>Club-Group 1's A and B teams both break for lunch together</b> (~{LUNCH_MINUTES} min) while Club-Group 2 plays its round 3, then <b>Club-Group 2 breaks for lunch</b> while Club-Group 1 plays its round 3. No team is ever double-booked or back-to-back. Finishes with 4 finals on the main pitch: A Cup, B Cup, then A Shield, B Shield. All final-day teams left blank until group placings are known. This replaces any fixtures currently listed below.
+              Splits the 8 clubs into two competition groups of 4 for the actual fixtures (each club's A and B teams stay together, so As only ever play As, Bs only ever play Bs). Lunch is separate and staggered in <b>4 pairs of just 2 clubs at a time</b> (~{LUNCH_MINUTES} min each) — a club's A and B teams always break together, and only 2 clubs ever rest at once so the other 3 pitches stay busy. No team is ever double-booked or back-to-back. Finishes with 4 finals on the main pitch: A Cup, B Cup, then A Shield, B Shield. All final-day teams left blank until group placings are known. This replaces any fixtures currently listed below.
             </div>
             <button
               onClick={async () => {
@@ -2496,10 +2513,13 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             >
               Generate schedule (24 group + 4 finals)
             </button>
-            {lunchWindows?.group1 && lunchWindows?.group2 && (
+            {lunchWindows && lunchWindows.length > 0 && (
               <div style={{ marginTop: 10, fontFamily: "Inter, sans-serif", fontSize: 12, color: C.ink, background: "#fff", borderRadius: 8, padding: 10, lineHeight: 1.6 }}>
-                <div><b>Lunch — Group 1</b> ({lunchWindows.group1.from}–{lunchWindows.group1.to}): {lunchWindows.group1.clubs.map((cid) => clubs.find((c) => c.id === cid)?.name || cid).join(", ")}</div>
-                <div style={{ marginTop: 4 }}><b>Lunch — Group 2</b> ({lunchWindows.group2.from}–{lunchWindows.group2.to}): {lunchWindows.group2.clubs.map((cid) => clubs.find((c) => c.id === cid)?.name || cid).join(", ")}</div>
+                {lunchWindows.map((w, i) => (
+                  <div key={i} style={{ marginTop: i > 0 ? 4 : 0 }}>
+                    <b>Lunch {i + 1}</b> ({w.from}–{w.to}): {w.clubs.map((cid) => clubs.find((c) => c.id === cid)?.name || cid).join(", ")}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -2905,7 +2925,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 setAnnouncements(DEFAULT_ANNOUNCEMENTS);
                 persist("announcements", DEFAULT_ANNOUNCEMENTS);
                 setLunchWindows({ A: null, B: null });
-                persist("lunchWindows", { group1: null, group2: null });
+                persist("lunchWindows", []);
                 logAction(adminName, "Reset all test data (fixtures, orders, announcements, lunch windows) to a clean slate");
               }}
               style={{ width: "100%", background: "#fff", border: `1.5px solid ${C.pitch}`, borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch, cursor: "pointer" }}
@@ -3072,7 +3092,27 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
 
   return (
     <div style={{ paddingBottom: 20 }}>
-      <TopBar title="Referee" right={<span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>{refName}</span>} />
+      <TopBar
+        title="Referee"
+        right={
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>{refName}</span>
+            <button
+              onClick={() => {
+                try {
+                  localStorage.removeItem("refName");
+                } catch {}
+                setRefName("");
+                setNameInput("");
+                setSelectedId(null);
+              }}
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 14, padding: "4px 10px", fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: "#fff", cursor: "pointer" }}
+            >
+              Switch
+            </button>
+          </div>
+        }
+      />
       <div style={{ padding: 16 }}>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginBottom: 12 }}>
           Tap a match to enter its final score.
@@ -3153,7 +3193,7 @@ export default function App() {
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
   const [auditLog, setAuditLog] = useState([]);
   const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
-  const [lunchWindows, setLunchWindows] = useState({ group1: null, group2: null });
+  const [lunchWindows, setLunchWindows] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
 
   const [myClub, setMyClub] = useState(() => {
@@ -3217,7 +3257,7 @@ export default function App() {
         loadShared("announcements", DEFAULT_ANNOUNCEMENTS),
         loadShared("sponsors", DEFAULT_SPONSORS),
         loadShared("auditLog", []),
-        loadShared("lunchWindows", { group1: null, group2: null }),
+        loadShared("lunchWindows", []),
       ]);
       setTeams(t);
       setMatches(m);
@@ -3325,13 +3365,13 @@ export default function App() {
   }
 
   let body;
-  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} />;
+  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} />;
   else if (screen === "teams") body = <TeamsScreen teams={teams} matches={matches} setScreen={setScreen} setSelectedTeam={setSelectedTeam} />;
   else if (screen === "teamDetail") body = <TeamDetailScreen teamId={selectedTeam} teams={teams} matches={matches} setScreen={setScreen} />;
-  else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} />;
-  else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} />;
+  else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} myClubObj={myClubObj} />;
+  else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} myClubObj={myClubObj} />;
   else if (screen === "team") body = <TeamScreen teams={teams} clubs={clubs} matches={matches} orders={orders} saveOrder={saveOrder} sponsors={sponsors} myClub={myClub} myClubName={myClubObj?.name} onOpenWelcome={openWelcome} onChangeClub={changeClub} lunchWindows={lunchWindows} />;
-  else if (screen === "info") body = <InfoScreen sponsors={sponsors} announcements={announcements} />;
+  else if (screen === "info") body = <InfoScreen sponsors={sponsors} announcements={announcements} myClubObj={myClubObj} />;
   else if (screen === "admin")
     body = (
       <AdminScreen
