@@ -13,13 +13,17 @@ const C = {
   inkSoft: "#6B5A52",
 };
 
-const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');`;
+const FONT_IMPORT = `
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+*, *::before, *::after { box-sizing: border-box; }
+input, select, textarea, button { box-sizing: border-box; max-width: 100%; }
+`;
 const HERO_BRIGHT = "#D61224";
 const HERO_DARK = "#750712";
 
 // The ?v= tag forces browsers/CDN to re-fetch when a crest/logo image is updated —
 // bump this number any time an image file changes, otherwise cached copies can stick around.
-const CREST_VERSION = "4";
+const CREST_VERSION = "5";
 const BADGE_LOGO = `/logo.png?v=${CREST_VERSION}`;
 
 const CRESTS = {
@@ -2040,18 +2044,18 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                   <select
                     value={m.teamA}
                     onChange={(e) => updateMatch(m.id, { teamA: e.target.value })}
-                    style={{ flex: 1, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
+                    style={{ flex: 1, minWidth: 0, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
                   >
                     <option value="">TBC…</option>
                     {teamOptions.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>v</span>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>v</span>
                   <select
                     value={m.teamB}
                     onChange={(e) => updateMatch(m.id, { teamB: e.target.value })}
-                    style={{ flex: 1, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
+                    style={{ flex: 1, minWidth: 0, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
                   >
                     <option value="">TBC…</option>
                     {teamOptions.map((t) => (
