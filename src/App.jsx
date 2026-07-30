@@ -1740,12 +1740,12 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
 
         <Stepper label="Players" value={order?.players || 0} onChange={(v) => set("players", v)} />
         <Stepper label="Mentors" value={order?.mentors || 0} onChange={(v) => set("mentors", v)} />
-        <Stepper label="Sausage Baps" value={order?.sausageRolls || 0} onChange={(v) => set("sausageRolls", v)} sub={`Breakfast, ready on arrival — €${SAUSAGE_BAP_PRICE.toFixed(2)} each, paid on the day`} />
+        <Stepper label="Breakfast Banger (sausage in a bun)" value={order?.sausageRolls || 0} onChange={(v) => set("sausageRolls", v)} sub={`Breakfast, ready on arrival — €${SAUSAGE_BAP_PRICE.toFixed(2)} each, paid on the day`} />
         <Stepper label="Beef burger headcount" value={order?.burgers || 0} onChange={(v) => set("burgers", v)} sub="Lunch — 1 per child/mentor, included by voucher" />
 
         <div style={{ background: C.line, border: `1px solid ${C.ash}55`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total breakfast (Sausage Baps)</span>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total Breakfast Bangers (sausage in a bun)</span>
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 20, color: C.pitch }}>{totalBreakfast}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.ash}33` }}>
@@ -1757,7 +1757,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 22, color: C.sliotar }}>€{amountDue.toFixed(2)}</span>
           </div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, marginTop: 6 }}>
-            Based on a temporary price of €{SAUSAGE_BAP_PRICE.toFixed(2)} per Sausage Bap — burgers are already covered by voucher, no charge.
+            Based on a temporary price of €{SAUSAGE_BAP_PRICE.toFixed(2)} per Breakfast Banger (sausage in a bun) — burgers are already covered by voucher, no charge.
           </div>
         </div>
 
@@ -2265,7 +2265,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
         <div style={{ padding: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
             {[
-              ["Sausage Baps", totals.sausageRolls],
+              ["Breakfast Bangers", totals.sausageRolls],
               ["Beef burgers", totals.burgers],
             ].map(([label, val]) => (
               <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, textAlign: "center" }}>
@@ -2275,7 +2275,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             ))}
           </div>
           <div style={{ background: C.turf, borderRadius: 12, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 700, color: C.line }}>Total to collect ({totals.sausageRolls} Sausage Baps × €{SAUSAGE_BAP_PRICE.toFixed(2)})</span>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 700, color: C.line }}>Total to collect ({totals.sausageRolls} Breakfast Bangers × €{SAUSAGE_BAP_PRICE.toFixed(2)})</span>
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 22, color: C.sliotar }}>€{(totals.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)}</span>
           </div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
@@ -2297,7 +2297,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 </div>
                 {o && (
                   <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginTop: 4 }}>
-                    {o.contactName} · {o.mobile} · {o.sausageRolls} Sausage Baps (€{(o.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)}), {o.burgers} burgers (free)
+                    {o.contactName} · {o.mobile} · {o.sausageRolls} Breakfast Bangers (€{(o.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)}), {o.burgers} burgers (free)
                   </div>
                 )}
               </div>
