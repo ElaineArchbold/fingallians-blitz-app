@@ -13,7 +13,9 @@ const C = {
   inkSoft: "#6B5A52",
 };
 
-const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');`;
+const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');`;
+const HERO_BRIGHT = "#D61224";
+const HERO_DARK = "#750712";
 
 const BADGE_LOGO = "/logo.png";
 
@@ -171,7 +173,7 @@ function Scoreline({ goals, points, big }) {
         <div
           key={i}
           style={{
-            fontFamily: "Fredoka, sans-serif",
+            fontFamily: "Poppins, sans-serif",
             fontWeight: 600,
             fontSize: big ? 23 : 16,
             lineHeight: 1,
@@ -267,7 +269,7 @@ function TeamBadge({ team, size = 40 }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontFamily: "Fredoka, sans-serif",
+        fontFamily: "Poppins, sans-serif",
         fontWeight: 600,
         fontSize: size * 0.4,
         flexShrink: 0,
@@ -381,7 +383,7 @@ function TopBar({ title, onBack, right }) {
       ) : (
         <LogoBadge size={34} ringWidth={2} />
       )}
-      <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: 0.3, flex: 1 }}>
+      <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: 0.3, flex: 1 }}>
         {title}
       </div>
       {right}
@@ -429,7 +431,7 @@ function SponsorStrip({ sponsors, tier }) {
           {s.logo ? (
             <img src={s.logo} alt={s.name} style={{ maxWidth: "88%", maxHeight: "88%", objectFit: "contain" }} />
           ) : (
-            <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 9, color: C.ink, textAlign: "center", lineHeight: 1.05, padding: 2 }}>
+            <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 9, color: C.ink, textAlign: "center", lineHeight: 1.05, padding: 2 }}>
               {s.name}
             </span>
           )}
@@ -441,88 +443,156 @@ function SponsorStrip({ sponsors, tier }) {
 
 /* ================= SCREENS ================= */
 
-function WelcomeScreen({ clubs, onChoose, onClose }) {
+function WelcomeScreen({ clubs, onChoose, onClose, myClubName }) {
   return (
     <div
       style={{
         minHeight: "100dvh",
-        background: `linear-gradient(160deg, ${C.pitch}, ${C.turf})`,
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        overflowY: "auto",
+        background: C.line,
       }}
     >
-      <div style={{ width: "100%", display: "flex", justifyContent: "flex-end", padding: "14px 16px 0" }}>
-        <button
-          onClick={onClose}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${HERO_BRIGHT}, ${HERO_DARK})`,
+          padding: "14px 20px 26px",
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: "rgba(255,255,255,0.14)",
+              border: "none",
+              borderRadius: 20,
+              width: 30,
+              height: 30,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <X size={16} color="#fff" />
+          </button>
+        </div>
+
+        <div
           style={{
-            background: "rgba(255,255,255,0.12)",
-            border: "none",
-            borderRadius: 20,
-            width: 32,
-            height: 32,
+            width: 68,
+            height: 68,
+            borderRadius: 18,
+            background: "#fff",
+            border: `2.5px solid ${C.sliotar}`,
+            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: "pointer",
+            marginTop: 4,
           }}
         >
-          <X size={18} color={C.line} />
-        </button>
-      </div>
+          <img src={BADGE_LOGO} alt="Fingallians badge" style={{ width: "72%", height: "72%", objectFit: "contain" }} />
+        </div>
 
-      <div style={{ padding: "8px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-        <LogoBadge size={84} ringWidth={3} />
         <div
           style={{
-            fontFamily: "Fredoka, sans-serif",
+            display: "inline-block",
+            marginTop: 16,
+            padding: "5px 14px",
+            borderRadius: 20,
+            border: "1.5px solid rgba(255,255,255,0.55)",
+            background: "rgba(255,255,255,0.1)",
+            fontFamily: "Poppins, sans-serif",
             fontWeight: 700,
-            fontSize: 21,
-            color: C.line,
-            textAlign: "center",
-            marginTop: 14,
-            lineHeight: 1.25,
+            fontSize: 11,
+            letterSpacing: 1,
+            color: "#fff",
+            textTransform: "uppercase",
           }}
         >
-          {EVENT.name}
-        </div>
-        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: "#F5D9A0", marginTop: 5, textAlign: "center" }}>
-          {EVENT.date} · {EVENT.venue}
-        </div>
-        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#E9DAD0", marginTop: 14, textAlign: "center", maxWidth: 300 }}>
-          Tap your club to follow their fixtures and food order
+          Fingallians
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%", maxWidth: 360, marginTop: 20 }}>
+        <div
+          style={{
+            fontFamily: "Poppins, sans-serif",
+            fontWeight: 800,
+            fontSize: 30,
+            color: "#fff",
+            textTransform: "uppercase",
+            lineHeight: 1.05,
+            marginTop: 10,
+            letterSpacing: 0.3,
+          }}
+        >
+          Hurling Blitz
+        </div>
+
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 8, maxWidth: 320 }}>
+          Select your club, then explore fixtures, standings, and your food order.
+        </div>
+
+        {myClubName && (
+          <div
+            style={{
+              marginTop: 18,
+              background: "rgba(0,0,0,0.18)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 12,
+              padding: "10px 14px",
+            }}
+          >
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: 1 }}>
+              Following
+            </div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 16, color: "#fff", marginTop: 2 }}>
+              {myClubName}
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: "none", border: "none", padding: 0, marginTop: 2, fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.sliotar, textDecoration: "underline", cursor: "pointer" }}
+            >
+              Continue with this club
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          background: "#fff",
+          borderRadius: "20px 20px 0 0",
+          marginTop: -14,
+          padding: "20px 18px 24px",
+        }}
+      >
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, textAlign: "center" }}>
+          {myClubName ? "Pick a different club" : "Choose your club"}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
           {clubs.map((c) => (
             <button
               key={c.id}
               onClick={() => onChoose(c.id)}
               style={{
-                background: "rgba(255,255,255,0.06)",
-                border: `1px solid ${C.sliotar}55`,
-                borderRadius: 14,
-                padding: "14px 6px",
+                background: "#FFF7F6",
+                border: `1.5px solid ${HERO_BRIGHT}22`,
+                borderRadius: 12,
+                padding: "10px 3px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 7,
+                gap: 5,
                 cursor: "pointer",
+                minWidth: 0,
               }}
             >
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  padding: 3,
-                  background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
-                }}
-              >
-                <TeamBadge team={c} size={50} />
-              </div>
-              <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 12, color: C.line, textAlign: "center", lineHeight: 1.2 }}>
+              <TeamBadge team={c} size={42} />
+              <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 8.5, color: C.ink, textAlign: "center", lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
                 {c.name}
               </span>
             </button>
@@ -532,13 +602,16 @@ function WelcomeScreen({ clubs, onChoose, onClose }) {
         <button
           onClick={onClose}
           style={{
+            display: "block",
+            width: "100%",
             background: "none",
             border: "none",
-            marginTop: 22,
+            marginTop: 20,
             fontFamily: "Inter, sans-serif",
-            fontSize: 13,
-            color: "#E9DAD0",
-            textDecoration: "underline",
+            fontSize: 12.5,
+            color: HERO_BRIGHT,
+            fontWeight: 600,
+            textAlign: "center",
             cursor: "pointer",
           }}
         >
@@ -554,14 +627,29 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   return (
     <div>
-      <div style={{ background: `linear-gradient(160deg, ${C.pitch}, ${C.turf})`, color: C.line, padding: "20px 16px 22px" }}>
+      <div style={{ background: `linear-gradient(135deg, ${HERO_BRIGHT}, ${HERO_DARK})`, color: C.line, padding: "20px 16px 22px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
-          <LogoBadge size={60} />
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 16,
+              background: "#fff",
+              border: `2px solid ${C.sliotar}`,
+              boxShadow: "0 3px 10px rgba(0,0,0,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <img src={BADGE_LOGO} alt="Fingallians badge" style={{ width: "72%", height: "72%", objectFit: "contain" }} />
+          </div>
           <div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, letterSpacing: 1.5, color: "#F5D9A0", textTransform: "uppercase" }}>
               {EVENT.date}
             </div>
-            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 21, marginTop: 2, lineHeight: 1.2, letterSpacing: 0.2 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 19, marginTop: 2, lineHeight: 1.15, letterSpacing: 0.2, textTransform: "uppercase" }}>
               {EVENT.name}
             </div>
           </div>
@@ -653,7 +741,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
       </div>
 
       <div style={{ padding: "14px 16px 4px" }}>
-        <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
           Pitch Layout
         </div>
         <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12 }}>
@@ -664,7 +752,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
                 <rect x="6" y="6" width="86" height="118" rx="3" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
                 <line x1="6" y1="65" x2="92" y2="65" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
                 <circle cx="49" cy="65" r="12" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
-                <text x="49" y="72" textAnchor="middle" fontFamily="Fredoka, sans-serif" fontSize="26" fill="#FBF8F3">{i + 1}</text>
+                <text x="49" y="72" textAnchor="middle" fontFamily="Poppins, sans-serif" fontSize="26" fill="#FBF8F3">{i + 1}</text>
                 <text x="49" y="115" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="700" fill="#FBF8F3" letterSpacing="1">PITCH {i + 1}</text>
               </g>
             ))}
@@ -789,7 +877,7 @@ function TeamsScreen({ teams, matches, setScreen, setSelectedTeam }) {
           >
             <TeamBadge team={c} size={56} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 16, color: C.ink, lineHeight: 1.25 }}>
+              <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 16, color: C.ink, lineHeight: 1.25 }}>
                 {c.name}
               </div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginBottom: 8 }}>{c.town}, Co. {c.county}</div>
@@ -807,7 +895,7 @@ function TeamsScreen({ teams, matches, setScreen, setSelectedTeam }) {
                       border: "none",
                       borderRadius: 8,
                       padding: "7px 16px",
-                      fontFamily: "Fredoka, sans-serif",
+                      fontFamily: "Poppins, sans-serif",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: "pointer",
@@ -837,7 +925,7 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <TeamBadge team={team} size={56} />
           <div>
-            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 17, color: C.ink }}>{team.name}</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 17, color: C.ink }}>{team.name}</div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{team.town}, Co. {team.county}</div>
           </div>
         </div>
@@ -924,7 +1012,7 @@ function PitchBadge({ pitch }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "Fredoka, sans-serif",
+          fontFamily: "Poppins, sans-serif",
           fontWeight: 700,
           fontSize: 11,
           flexShrink: 0,
@@ -957,7 +1045,7 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
         )}
         {Object.keys(groups).sort().map((time) => (
           <div key={time} style={{ marginBottom: 16 }}>
-            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
             {groups[time].map((m) => (
               <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -1036,7 +1124,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
                 <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.won}</div>
                 <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.drawn}</div>
                 <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 12 }}>{r.lost}</div>
-                <div style={{ textAlign: "center", fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
+                <div style={{ textAlign: "center", fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{r.points}</div>
               </div>
             );
           })}
@@ -1098,7 +1186,7 @@ function InfoScreen({ sponsors }) {
       <div style={{ padding: 16 }}>
         {items.map((it) => (
           <div key={it.title} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
-            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink, marginBottom: 6 }}>{it.title}</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink, marginBottom: 6 }}>{it.title}</div>
             {it.body && <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>{it.body}</div>}
             {it.list && (
               <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
@@ -1136,7 +1224,7 @@ function InfoScreen({ sponsors }) {
           </div>
         ))}
 
-        <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, margin: "18px 0 12px" }}>
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, margin: "18px 0 12px" }}>
           Thank You to Our Sponsors
         </div>
 
@@ -1173,7 +1261,7 @@ function InfoScreen({ sponsors }) {
                     {s.logo ? (
                       <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: cardSize - 20, objectFit: "contain" }} />
                     ) : (
-                      <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: tierKey === "supporter" ? 12 : 14, color: C.ink, textAlign: "center" }}>
+                      <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: tierKey === "supporter" ? 12 : 14, color: C.ink, textAlign: "center" }}>
                         {s.name}
                       </span>
                     )}
@@ -1201,7 +1289,7 @@ function Stepper({ label, value, onChange, sub }) {
         >
           <Minus size={18} color={C.pitch} />
         </button>
-        <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 22, minWidth: 34, textAlign: "center", color: C.ink }}>{value}</div>
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 22, minWidth: 34, textAlign: "center", color: C.ink }}>{value}</div>
         <button
           onClick={() => onChange(value + 1)}
           style={{ width: 40, height: 40, borderRadius: 10, border: "none", background: C.pitch, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -1292,7 +1380,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             <TeamBadge team={team} size={40} />
             <div>
-              <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{team.name}</div>
+              <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{team.name}</div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>Enter your club password to view or edit the food order</div>
             </div>
           </div>
@@ -1345,7 +1433,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
       <TopBar title={team.name} onBack={() => setClubId(null)} />
       <div style={{ padding: 16 }}>
         <div style={{ background: C.turf, color: C.line, borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 16 }}>{team.name} — food order</div>
+          <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 16 }}>{team.name} — food order</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: "#E9DAD0", marginTop: 4 }}>Order by 15 August</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: "#E9DAD0", marginTop: 8, lineHeight: 1.5 }}>{MENTOR_BURGER_NOTE}</div>
         </div>
@@ -1374,7 +1462,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
 
         <div style={{ background: C.line, border: `1px solid ${C.ash}55`, borderRadius: 12, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch headcount</span>
-          <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 22, color: C.pitch }}>{totalLunches}</span>
+          <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 22, color: C.pitch }}>{totalLunches}</span>
         </div>
 
         {saved && (
@@ -1398,7 +1486,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
             border: "none",
             borderRadius: 30,
             padding: "14px 44px",
-            fontFamily: "Fredoka, sans-serif",
+            fontFamily: "Poppins, sans-serif",
             fontWeight: 600,
             fontSize: 16,
             letterSpacing: 0.5,
@@ -1618,7 +1706,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               ["Beef burgers", totals.burgers],
             ].map(([label, val]) => (
               <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, textAlign: "center" }}>
-                <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 700, fontSize: 26, color: C.pitch }}>{val}</div>
+                <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 26, color: C.pitch }}>{val}</div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{label}</div>
               </div>
             ))}
@@ -1654,7 +1742,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       {tab === "fixtures" && (
         <div style={{ padding: 16 }}>
           <div style={{ background: C.line, border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
-            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
@@ -1956,7 +2044,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             return (
               <div key={entry.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                  <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 12.5, color: C.pitch }}>{entry.admin}</span>
+                  <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 12.5, color: C.pitch }}>{entry.admin}</span>
                   <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{timeLabel}</span>
                 </div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink }}>{entry.action}</div>
@@ -2097,7 +2185,7 @@ export default function App() {
   }
 
   if (screen === "welcome") {
-    return <WelcomeScreen clubs={clubs} onChoose={chooseClub} onClose={closeWelcome} />;
+    return <WelcomeScreen clubs={clubs} onChoose={chooseClub} onClose={closeWelcome} myClubName={myClubObj?.name} />;
   }
 
   let body;
