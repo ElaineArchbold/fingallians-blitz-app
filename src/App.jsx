@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Home, Users, Trophy, UtensilsCrossed, Info, Settings, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone } from "lucide-react";
+import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone } from "lucide-react";
 
 /* ---------- Design tokens (matched to the real club crest: red / black / gold) ---------- */
 const C = {
@@ -31,14 +31,25 @@ const CRESTS = {
 
 /* ---------- Event constants ---------- */
 const EVENT = {
-  name: "Fingallians U12 Hurling Invitational",
+  name: "Fingallians U12 Hurling Blitz",
   date: "Saturday 22 August 2026",
   venue: "Lawless Memorial Park, Fingallians GAA, Swords",
   registration: "9:15 a.m.",
 };
 
-const WELCOME_MESSAGE =
-  "A Chairde, céad míle fáilte to Lawless Memorial Park. Fingallians GAA are thrilled to welcome every player, mentor, parent and supporter to our Under 12 Hurling Invitational. Play with pride, cheer on every child regardless of the jersey they wear, and enjoy every minute of it. — 2014 Boys Mentoring Team";
+const WELCOME_PARAGRAPHS = [
+  "A Chairde,",
+  "Céad míle fáilte to Lawless Memorial Park.",
+  "Fingallians GAA are absolutely thrilled to welcome every player, mentor, parent and supporter who has made the journey to Swords today for our Under 12 Hurling Invitational. Whether you have travelled from down the road or from across the country, we are genuinely delighted to have you here with us.",
+  "Days like today are what the GAA is all about. There is something truly special about watching Under 12s take to the pitch, the energy, the enthusiasm and the sheer joy of the game at that age is something that never gets old. We are proud to host clubs from across Ireland, each bringing their own style, skill and spirit, and we hope every child goes home having been challenged, encouraged and most importantly, having had a brilliant day.",
+  "To our visiting clubs - thank you. The effort involved in preparing a squad, organising travel and giving up a Saturday is not lost on us. We hope you feel the warmth of our welcome from the moment you arrive.",
+  "To our own Fingallians players - today is your day to shine on home turf. Play with pride, play with heart, and represent your club the way we know you can.",
+  "To every parent, mentor and volunteer who has given their time to make today possible - both here at Fingallians and in clubs across the country - thank you sincerely. None of this happens without you.",
+  "We ask everyone to embrace the spirit of fair play, to cheer on every child regardless of the jersey they wear and to remember that at Under 12, the most important thing is that every player enjoys their day and leaves the pitch with a smile.",
+  "Today is one of the highlights of the Fingallians Juvenile Calendar, and we hope it becomes a memory that players, families and clubs treasure for years to come.",
+  "Enjoy every minute of it.",
+];
+const WELCOME_SIGNOFF = "2014 Boys Mentoring Team";
 
 const DEFAULT_CLUBS = [
   { id: "fing", name: "Fingallians GAA", town: "Swords", county: "Dublin", color: "#B3202E", contact: "" },
@@ -75,11 +86,33 @@ const DEFAULT_ANNOUNCEMENTS = [
 
 const DEFAULT_ORDERS = {};
 const DEFAULT_SPONSORS = [
-  { id: "s1", name: "Your business here", tier: "gold", url: "" },
+  { id: "s1", name: "Gold Sponsor 1", tier: "gold", url: "", logo: "" },
+  { id: "s2", name: "Gold Sponsor 2", tier: "gold", url: "", logo: "" },
+  { id: "s3", name: "Silver Sponsor 1", tier: "silver", url: "", logo: "" },
+  { id: "s4", name: "Silver Sponsor 2", tier: "silver", url: "", logo: "" },
+  { id: "s5", name: "Supporter 1", tier: "supporter", url: "", logo: "" },
+  { id: "s6", name: "Supporter 2", tier: "supporter", url: "", logo: "" },
 ];
 
-const ADMIN_CODE = "blitz2026";
-const MENTOR_BURGER_NOTE = "Every registered player and mentor gets a voucher on arrival for a burger at lunch, plus a tea/coffee voucher for mentors — nothing to order there. This form is so organisers can plan catering numbers: confirm your headcount, add any breakfast sausage rolls you'd like from the BBQ, and flag dietary needs.";
+// Named organiser logins — all have identical full access (fixtures, scores, all food orders,
+// announcements, sponsors). Add/remove people here; swap out passwords whenever you like.
+const ADMIN_ACCOUNTS = {
+  blitz2026: "Organiser",
+  Fingallians1884HQ: "Elaine",
+};
+
+// Per-club password for editing that club's food order — pattern: club name + founding year.
+const CLUB_PASSWORDS = {
+  fing: "Fingallians1884",
+  finian: "StFinians1983",
+  rathvilly: "Rathvilly1888",
+  knockbridge: "Knockbridge1985",
+  naomheoin: "NaomhEoin1929",
+  navanom: "NavanOMahonys1948",
+  ratoath: "Ratoath1903",
+  brayemmets: "BrayEmmets1885",
+};
+const MENTOR_BURGER_NOTE = "Every registered player and mentor gets a voucher on arrival for a burger at lunch, plus a tea/coffee voucher for mentors — nothing to order there. This form is so organisers can plan catering numbers: confirm your headcount and add any breakfast sausage rolls you'd like from the BBQ.";
 
 /* ---------- Storage helpers (Turso via /api/kv) ---------- */
 const API_BASE = "/api/kv";
@@ -139,6 +172,32 @@ function Scoreline({ goals, points, big }) {
           {ch}
         </div>
       ))}
+    </div>
+  );
+}
+
+function LogoBadge({ size = 60, ringWidth = 3 }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: "#fff",
+        border: `${ringWidth}px solid ${C.sliotar}`,
+        boxShadow: "0 3px 10px rgba(0,0,0,0.35)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        overflow: "hidden",
+      }}
+    >
+      <img
+        src={BADGE_LOGO}
+        alt="Fingallians Hurling Blitz badge"
+        style={{ width: "76%", height: "76%", objectFit: "contain" }}
+      />
     </div>
   );
 }
@@ -235,7 +294,7 @@ function BottomNav({ screen, setScreen }) {
         left: 0,
         right: 0,
         background: C.turf,
-        borderTop: `1px solid ${C.pitchLight}`,
+        borderTop: `2px solid ${C.sliotar}`,
         display: "flex",
         zIndex: 20,
       }}
@@ -276,7 +335,7 @@ function TopBar({ title, onBack, right }) {
   return (
     <div
       style={{
-        background: C.turf,
+        background: C.pitch,
         color: C.line,
         padding: "14px 16px",
         display: "flex",
@@ -285,7 +344,7 @@ function TopBar({ title, onBack, right }) {
         position: "sticky",
         top: 0,
         zIndex: 15,
-        borderBottom: `1px solid ${C.pitchLight}`,
+        borderBottom: `2px solid ${C.sliotar}`,
       }}
     >
       {onBack ? (
@@ -302,13 +361,58 @@ function TopBar({ title, onBack, right }) {
 }
 
 function SponsorStrip({ sponsors, tier }) {
-  const list = sponsors.filter((s) => (tier === "gold" ? s.tier === "gold" : true));
+  if (tier === "gold") {
+    const golds = sponsors.filter((s) => s.tier === "gold");
+    if (!golds.length) return null;
+    return (
+      <div style={{ background: "#fff", padding: "14px 16px", borderBottom: `1px solid ${C.pitch}14` }}>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, textAlign: "center" }}>
+          Proud main sponsors
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          {golds.map((s) => (
+            <a
+              key={s.id}
+              href={s.url || undefined}
+              onClick={(e) => !s.url && e.preventDefault()}
+              style={{
+                flex: "1 1 140px",
+                maxWidth: 170,
+                background: `linear-gradient(160deg, #fff, ${C.line})`,
+                border: `1.5px solid ${C.sliotar}`,
+                borderRadius: 14,
+                padding: "14px 12px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                textDecoration: "none",
+                minHeight: 72,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              }}
+            >
+              {s.logo ? (
+                <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: 44, objectFit: "contain" }} />
+              ) : (
+                <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
+                  {s.name}
+                </span>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const list = sponsors.filter((s) => s.tier === "gold" || s.tier === "silver");
   if (!list.length) return null;
   return (
     <div
       style={{
         display: "flex",
-        gap: 8,
+        gap: 10,
         overflowX: "auto",
         padding: "10px 16px",
         background: "#EFE9DC",
@@ -317,13 +421,17 @@ function SponsorStrip({ sponsors, tier }) {
       {list.map((s) => (
         <a
           key={s.id}
-          href={s.url || "#"}
+          href={s.url || undefined}
+          onClick={(e) => !s.url && e.preventDefault()}
           style={{
             flexShrink: 0,
             background: "#fff",
             border: `1px solid ${C.ash}55`,
             borderRadius: 10,
-            padding: "8px 14px",
+            padding: s.logo ? "8px 12px" : "8px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
             fontFamily: "Inter, sans-serif",
             fontSize: 12,
             fontWeight: 600,
@@ -332,6 +440,7 @@ function SponsorStrip({ sponsors, tier }) {
             whiteSpace: "nowrap",
           }}
         >
+          {s.logo && <img src={s.logo} alt={s.name} style={{ height: 20, maxWidth: 60, objectFit: "contain" }} />}
           {s.name} <span style={{ color: C.ash, fontWeight: 400 }}>· sponsor</span>
         </a>
       ))}
@@ -341,29 +450,139 @@ function SponsorStrip({ sponsors, tier }) {
 
 /* ================= SCREENS ================= */
 
-function TodayScreen({ teams, matches, announcements, sponsors, setScreen }) {
+function WelcomeScreen({ clubs, onChoose, onSkip }) {
+  return (
+    <div
+      style={{
+        minHeight: "100dvh",
+        background: `linear-gradient(160deg, ${C.pitch}, ${C.turf})`,
+        padding: "36px 20px 28px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <LogoBadge size={110} ringWidth={4} />
+      <div
+        style={{
+          fontFamily: "Oswald, sans-serif",
+          fontWeight: 700,
+          fontSize: 24,
+          color: C.line,
+          textAlign: "center",
+          marginTop: 18,
+          lineHeight: 1.25,
+        }}
+      >
+        {EVENT.name}
+      </div>
+      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#F5D9A0", marginTop: 6, textAlign: "center" }}>
+        {EVENT.date} · {EVENT.venue}
+      </div>
+      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: "#E9DAD0", marginTop: 18, textAlign: "center", maxWidth: 320 }}>
+        Tap your club to get started
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, width: "100%", maxWidth: 360, marginTop: 22 }}>
+        {clubs.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => onChoose(c.id)}
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: `1px solid ${C.sliotar}55`,
+              borderRadius: 14,
+              padding: "16px 8px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              cursor: "pointer",
+            }}
+          >
+            <div
+              style={{
+                width: 66,
+                height: 66,
+                borderRadius: "50%",
+                padding: 3,
+                background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
+              }}
+            >
+              <TeamBadge team={c} size={60} />
+            </div>
+            <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 12.5, color: C.line, textAlign: "center", lineHeight: 1.2 }}>
+              {c.name}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={onSkip}
+        style={{
+          background: "none",
+          border: "none",
+          marginTop: 26,
+          fontFamily: "Inter, sans-serif",
+          fontSize: 13,
+          color: "#E9DAD0",
+          textDecoration: "underline",
+          cursor: "pointer",
+        }}
+      >
+        Just browsing — skip for now
+      </button>
+    </div>
+  );
+}
+
+function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, onChangeClub }) {
   const next = matches.find((m) => m.status !== "finished");
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   return (
     <div>
-      <div style={{ background: `linear-gradient(160deg, ${C.turf}, ${C.pitch})`, color: C.line, padding: "20px 16px 24px" }}>
+      <div style={{ background: `linear-gradient(160deg, ${C.pitch}, ${C.turf})`, color: C.line, padding: "20px 16px 22px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
-          <img src={BADGE_LOGO} alt="Fingallians Hurling Blitz badge" style={{ width: 56, height: 67, flexShrink: 0, objectFit: "contain" }} />
+          <LogoBadge size={60} />
           <div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, letterSpacing: 1.5, color: "#E8C9A0", textTransform: "uppercase" }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, letterSpacing: 1.5, color: "#F5D9A0", textTransform: "uppercase" }}>
               {EVENT.date}
             </div>
-            <div style={{ fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 22, marginTop: 2, lineHeight: 1.15 }}>
+            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 21, marginTop: 2, lineHeight: 1.2, letterSpacing: 0.2 }}>
               {EVENT.name}
             </div>
           </div>
         </div>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#E9DAD0", marginTop: 4 }}>{EVENT.venue}</div>
+
+        {myClubName && (
+          <button
+            onClick={onChangeClub}
+            style={{
+              marginTop: 10,
+              background: "none",
+              border: "none",
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontFamily: "Inter, sans-serif",
+              fontSize: 12.5,
+              color: C.sliotar,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Following {myClubName} <span style={{ color: "#E9DAD0", fontWeight: 400 }}>· change</span>
+          </button>
+        )}
+
         <div
           style={{
             marginTop: 14,
-            background: "rgba(245,241,231,0.1)",
-            border: `1px solid ${C.ash}`,
+            background: "rgba(245,241,231,0.12)",
+            border: `1px solid ${C.sliotar}`,
             borderRadius: 10,
             padding: "10px 12px",
             fontFamily: "Inter, sans-serif",
@@ -374,7 +593,7 @@ function TodayScreen({ teams, matches, announcements, sponsors, setScreen }) {
             gap: 8,
           }}
         >
-          <span style={{ color: C.ash, fontWeight: 700 }}>Registration by {EVENT.registration}</span> — register, then head to the club ball wall for a team photo.
+          <span style={{ color: C.sliotar, fontWeight: 700 }}>Registration by {EVENT.registration}</span> — register, then head to the club ball wall for a team photo.
         </div>
       </div>
 
@@ -386,15 +605,65 @@ function TodayScreen({ teams, matches, announcements, sponsors, setScreen }) {
             background: "#fff",
             border: `1px solid ${C.ash}44`,
             borderRadius: 10,
-            padding: "12px 14px",
+            padding: "16px 16px",
             fontFamily: "Inter, sans-serif",
-            fontSize: 12.5,
-            color: C.inkSoft,
+            fontSize: 13,
+            color: C.ink,
             lineHeight: 1.6,
-            fontStyle: "italic",
           }}
         >
-          {WELCOME_MESSAGE}
+          {WELCOME_PARAGRAPHS.map((p, i) => (
+            <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
+          ))}
+          <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
+        </div>
+      </div>
+
+      <div style={{ padding: "18px 0 4px" }}>
+        <div style={{ padding: "0 16px", marginBottom: 10, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+          <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink }}>
+            8 Clubs. One Blitz.
+          </span>
+          <button
+            onClick={() => setScreen("teams")}
+            style={{ background: "none", border: "none", fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.pitch, cursor: "pointer" }}
+          >
+            See all →
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: 14, overflowX: "auto", padding: "4px 16px 12px" }}>
+          {clubs.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setScreen("teams")}
+              style={{
+                background: "none",
+                border: "none",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
+                flexShrink: 0,
+                width: 76,
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: "50%",
+                  padding: 3,
+                  background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
+                }}
+              >
+                <TeamBadge team={c} size={62} />
+              </div>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
+                {c.name}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -714,7 +983,7 @@ function StandingsScreen({ teams, matches, sponsors }) {
   );
 }
 
-function InfoScreen() {
+function InfoScreen({ sponsors }) {
   const items = [
     {
       title: "Arrival & registration",
@@ -800,6 +1069,54 @@ function InfoScreen() {
             )}
           </div>
         ))}
+
+        <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, margin: "18px 0 12px" }}>
+          Thank You to Our Sponsors
+        </div>
+
+        {["gold", "silver", "supporter"].map((tierKey) => {
+          const inTier = sponsors.filter((s) => s.tier === tierKey);
+          if (!inTier.length) return null;
+          const tierLabel = tierKey === "gold" ? "Main Sponsors" : tierKey === "silver" ? "Silver Sponsors" : "Supporters";
+          const cardSize = tierKey === "gold" ? 76 : tierKey === "silver" ? 56 : 40;
+          return (
+            <div key={tierKey} style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                {tierLabel}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {inTier.map((s) => (
+                  <a
+                    key={s.id}
+                    href={s.url || undefined}
+                    onClick={(e) => !s.url && e.preventDefault()}
+                    style={{
+                      background: "#fff",
+                      border: `1px solid ${tierKey === "gold" ? C.sliotar : C.pitch + "22"}`,
+                      borderRadius: 12,
+                      padding: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: cardSize,
+                      minWidth: tierKey === "supporter" ? 100 : 130,
+                      flex: tierKey === "gold" ? "1 1 45%" : "0 0 auto",
+                      textDecoration: "none",
+                    }}
+                  >
+                    {s.logo ? (
+                      <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: cardSize - 20, objectFit: "contain" }} />
+                    ) : (
+                      <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: tierKey === "supporter" ? 12 : 14, color: C.ink, textAlign: "center" }}>
+                        {s.name}
+                      </span>
+                    )}
+                  </a>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -830,10 +1147,19 @@ function Stepper({ label, value, onChange, sub }) {
   );
 }
 
-function FoodScreen({ clubs, orders, saveOrder, sponsors }) {
-  const [clubId, setClubId] = useState(null);
+function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
+  const [clubId, setClubId] = useState(defaultClubId || null);
   const [order, setOrder] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [authedClub, setAuthedClub] = useState(false);
+  const [passcode, setPasscode] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+
+  useEffect(() => {
+    setAuthedClub(false);
+    setPasscode("");
+    setPasswordError(false);
+  }, [clubId]);
 
   useEffect(() => {
     if (clubId) {
@@ -845,9 +1171,6 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors }) {
           mentors: 0,
           sausageRolls: 0,
           burgers: 0,
-          veg: 0,
-          glutenFree: 0,
-          dietary: "",
           collectionTime: "",
           paid: false,
         }
@@ -892,8 +1215,53 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors }) {
   }
 
   const team = clubs.find((t) => t.id === clubId);
+
+  if (!authedClub) {
+    return (
+      <div style={{ padding: 16 }}>
+        <TopBar title={team.name} onBack={() => setClubId(null)} />
+        <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <TeamBadge team={team} size={40} />
+            <div>
+              <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{team.name}</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>Enter your club password to view or edit the food order</div>
+            </div>
+          </div>
+          <input
+            type="password"
+            placeholder="Club password"
+            value={passcode}
+            onChange={(e) => {
+              setPasscode(e.target.value);
+              setPasswordError(false);
+            }}
+            style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${passwordError ? C.pitch : C.pitch + "33"}`, fontFamily: "Inter, sans-serif", marginBottom: 8 }}
+          />
+          {passwordError && (
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.pitch, marginBottom: 8 }}>
+              That doesn't match — check with your mentor coordinator for the club password.
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (passcode === CLUB_PASSWORDS[clubId]) {
+                setAuthedClub(true);
+              } else {
+                setPasswordError(true);
+              }
+            }}
+            style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontFamily: "Inter, sans-serif", fontWeight: 700, cursor: "pointer" }}
+          >
+            Unlock order
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const set = (k, v) => setOrder((o) => ({ ...o, [k]: v }));
-  const totalLunches = (order?.burgers || 0) + (order?.veg || 0) + (order?.glutenFree || 0);
+  const totalLunches = order?.burgers || 0;
 
   return (
     <div style={{ paddingBottom: 90 }}>
@@ -926,18 +1294,6 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors }) {
         <Stepper label="Mentors" value={order?.mentors || 0} onChange={(v) => set("mentors", v)} />
         <Stepper label="Breakfast sausage rolls" value={order?.sausageRolls || 0} onChange={(v) => set("sausageRolls", v)} sub="Purchased from the BBQ — let us know how many to have ready" />
         <Stepper label="Beef burger headcount" value={order?.burgers || 0} onChange={(v) => set("burgers", v)} sub="Vouchered — confirm numbers for catering" />
-        <Stepper label="Veggie burger headcount" value={order?.veg || 0} onChange={(v) => set("veg", v)} />
-        <Stepper label="Gluten-free headcount" value={order?.glutenFree || 0} onChange={(v) => set("glutenFree", v)} />
-
-        <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, marginBottom: 10 }}>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>Dietary requirements / allergies</div>
-          <textarea
-            value={order?.dietary || ""}
-            onChange={(e) => set("dietary", e.target.value)}
-            rows={2}
-            style={{ width: "100%", padding: 10, borderRadius: 8, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 13, resize: "none" }}
-          />
-        </div>
 
         <div style={{ background: C.line, border: `1px solid ${C.ash}55`, borderRadius: 12, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch headcount</span>
@@ -983,7 +1339,9 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors }) {
 /* ---------- Admin ---------- */
 function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist }) {
   const [authed, setAuthed] = useState(false);
+  const [adminName, setAdminName] = useState("");
   const [code, setCode] = useState("");
+  const [loginError, setLoginError] = useState(false);
   const [tab, setTab] = useState("orders");
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [newFixture, setNewFixture] = useState({ time: "", pitch: "", teamA: "", teamB: "" });
@@ -1001,18 +1359,31 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             type="password"
             placeholder="Passcode"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", marginBottom: 10 }}
+            onChange={(e) => {
+              setCode(e.target.value);
+              setLoginError(false);
+            }}
+            style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px solid ${loginError ? C.pitch : C.pitch + "33"}`, fontFamily: "Inter, sans-serif", marginBottom: 10 }}
           />
+          {loginError && (
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.pitch, marginBottom: 8 }}>
+              That passcode isn't recognised.
+            </div>
+          )}
           <button
-            onClick={() => code === ADMIN_CODE && setAuthed(true)}
+            onClick={() => {
+              const name = ADMIN_ACCOUNTS[code];
+              if (name) {
+                setAdminName(name);
+                setAuthed(true);
+              } else {
+                setLoginError(true);
+              }
+            }}
             style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 12, fontFamily: "Inter, sans-serif", fontWeight: 700, cursor: "pointer" }}
           >
             Enter
           </button>
-          <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 10, fontFamily: "Inter, sans-serif" }}>
-            Prototype passcode: blitz2026 (swap for real auth before the live version).
-          </div>
         </div>
       </div>
     );
@@ -1024,11 +1395,9 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       if (!o) return acc;
       acc.sausageRolls += o.sausageRolls || 0;
       acc.burgers += o.burgers || 0;
-      acc.veg += o.veg || 0;
-      acc.glutenFree += o.glutenFree || 0;
       return acc;
     },
-    { sausageRolls: 0, burgers: 0, veg: 0, glutenFree: 0 }
+    { sausageRolls: 0, burgers: 0 }
   );
 
   const updateMatch = (id, patch) => {
@@ -1039,7 +1408,14 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
 
   return (
     <div style={{ paddingBottom: 20 }}>
-      <TopBar title="Organiser dashboard" right={<Settings size={18} color={C.line} />} />
+      <TopBar
+        title="Organiser dashboard"
+        right={
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.line, opacity: 0.85 }}>
+            {adminName}
+          </span>
+        }
+      />
       <div style={{ display: "flex", gap: 6, padding: "12px 16px 0", overflowX: "auto" }}>
         {["orders", "fixtures", "announcements", "sponsors"].map((t) => (
           <button
@@ -1069,8 +1445,6 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             {[
               ["Sausage rolls", totals.sausageRolls],
               ["Beef burgers", totals.burgers],
-              ["Veggie burgers", totals.veg],
-              ["Gluten-free", totals.glutenFree],
             ].map(([label, val]) => (
               <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 14, textAlign: "center" }}>
                 <div style={{ fontFamily: "Anton, sans-serif", fontWeight: 700, fontSize: 26, color: C.pitch }}>{val}</div>
@@ -1097,7 +1471,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 </div>
                 {o && (
                   <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginTop: 4 }}>
-                    {o.contactName} · {o.mobile} · {o.sausageRolls} rolls, {o.burgers} beef, {o.veg} veg, {o.glutenFree} GF
+                    {o.contactName} · {o.mobile} · {o.sausageRolls} sausage rolls, {o.burgers} beef burgers
                   </div>
                 )}
               </div>
@@ -1274,46 +1648,78 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
 
       {tab === "sponsors" && (
         <div style={{ padding: 16 }}>
-          {sponsors.map((s, i) => (
-            <div key={s.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
-              <input
-                value={s.name}
-                onChange={(e) => {
-                  const next = sponsors.map((x, j) => (j === i ? { ...x, name: e.target.value } : x));
-                  setSponsors(next);
-                  persist("sponsors", next);
-                }}
-                style={{ width: "100%", border: "none", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 6 }}
-              />
-              <div style={{ display: "flex", gap: 6 }}>
-                {["gold", "silver", "supporter"].map((tier) => (
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginBottom: 12, lineHeight: 1.5 }}>
+            Paste a hosted image URL for each logo (e.g. from their website, or an image you've uploaded to Google Drive/Imgur with public sharing on). Leave it blank and the sponsor's name shows instead.
+          </div>
+          {sponsors.map((s, i) => {
+            const update = (patch) => {
+              const next = sponsors.map((x, j) => (j === i ? { ...x, ...patch } : x));
+              setSponsors(next);
+              persist("sponsors", next);
+            };
+            return (
+              <div key={s.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+                  <input
+                    value={s.name}
+                    onChange={(e) => update({ name: e.target.value })}
+                    placeholder="Sponsor name"
+                    style={{ flex: 1, border: `1px solid ${C.pitch}22`, borderRadius: 6, padding: 8, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700 }}
+                  />
                   <button
-                    key={tier}
                     onClick={() => {
-                      const next = sponsors.map((x, j) => (j === i ? { ...x, tier } : x));
+                      const next = sponsors.filter((_, j) => j !== i);
                       setSponsors(next);
                       persist("sponsors", next);
                     }}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 20,
-                      border: `1px solid ${C.ash}55`,
-                      background: s.tier === tier ? C.ash : "#fff",
-                      color: s.tier === tier ? "#fff" : C.ink,
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: 11,
-                      cursor: "pointer",
-                    }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: C.inkSoft, flexShrink: 0 }}
                   >
-                    {tier}
+                    <X size={16} />
                   </button>
-                ))}
+                </div>
+                <input
+                  value={s.url}
+                  onChange={(e) => update({ url: e.target.value })}
+                  placeholder="Website URL (optional)"
+                  style={{ width: "100%", border: `1px solid ${C.pitch}22`, borderRadius: 6, padding: 8, fontFamily: "Inter, sans-serif", fontSize: 12, marginBottom: 6 }}
+                />
+                <input
+                  value={s.logo}
+                  onChange={(e) => update({ logo: e.target.value })}
+                  placeholder="Logo image URL (optional)"
+                  style={{ width: "100%", border: `1px solid ${C.pitch}22`, borderRadius: 6, padding: 8, fontFamily: "Inter, sans-serif", fontSize: 12, marginBottom: 8 }}
+                />
+                {s.logo && (
+                  <div style={{ marginBottom: 8, padding: 8, background: C.line, borderRadius: 6, display: "flex", justifyContent: "center" }}>
+                    <img src={s.logo} alt={s.name} style={{ maxHeight: 40, maxWidth: "100%", objectFit: "contain" }} />
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 6 }}>
+                  {["gold", "silver", "supporter"].map((tier) => (
+                    <button
+                      key={tier}
+                      onClick={() => update({ tier })}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 20,
+                        border: `1px solid ${C.ash}55`,
+                        background: s.tier === tier ? C.ash : "#fff",
+                        color: s.tier === tier ? "#fff" : C.ink,
+                        fontFamily: "Inter, sans-serif",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {tier}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <button
             onClick={() => {
-              const next = [...sponsors, { id: `s${Date.now()}`, name: "New sponsor", tier: "supporter", url: "" }];
+              const next = [...sponsors, { id: `s${Date.now()}`, name: "New sponsor", tier: "supporter", url: "", logo: "" }];
               setSponsors(next);
               persist("sponsors", next);
             }}
@@ -1350,8 +1756,46 @@ export default function App() {
   const [orders, setOrders] = useState(DEFAULT_ORDERS);
   const [announcements, setAnnouncements] = useState(DEFAULT_ANNOUNCEMENTS);
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
-  const [screen, setScreen] = useState("today");
   const [selectedTeam, setSelectedTeam] = useState(null);
+
+  const [myClub, setMyClub] = useState(() => {
+    try {
+      return localStorage.getItem("myClub") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [screen, setScreen] = useState(() => {
+    try {
+      const known = localStorage.getItem("myClub") || localStorage.getItem("skipWelcome");
+      return known ? "today" : "welcome";
+    } catch {
+      return "welcome";
+    }
+  });
+
+  const chooseClub = useCallback((clubId) => {
+    try {
+      localStorage.setItem("myClub", clubId);
+    } catch {}
+    setMyClub(clubId);
+    setScreen("today");
+  }, []);
+
+  const skipWelcome = useCallback(() => {
+    try {
+      localStorage.setItem("skipWelcome", "1");
+    } catch {}
+    setScreen("today");
+  }, []);
+
+  const changeClub = useCallback(() => {
+    try {
+      localStorage.removeItem("myClub");
+    } catch {}
+    setMyClub(null);
+    setScreen("welcome");
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -1391,6 +1835,8 @@ export default function App() {
 
   const persist = useCallback((key, value) => saveShared(key, value), []);
 
+  const myClubObj = clubs.find((c) => c.id === myClub) || null;
+
   const saveOrder = useCallback(
     async (clubId, order) => {
       const next = { ...orders, [clubId]: order };
@@ -1408,14 +1854,18 @@ export default function App() {
     );
   }
 
+  if (screen === "welcome") {
+    return <WelcomeScreen clubs={clubs} onChoose={chooseClub} onSkip={skipWelcome} />;
+  }
+
   let body;
-  if (screen === "today") body = <TodayScreen teams={teams} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} />;
+  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} onChangeClub={changeClub} />;
   else if (screen === "teams") body = <TeamsScreen teams={teams} matches={matches} setScreen={setScreen} setSelectedTeam={setSelectedTeam} />;
   else if (screen === "teamDetail") body = <TeamDetailScreen teamId={selectedTeam} teams={teams} matches={matches} setScreen={setScreen} />;
   else if (screen === "fixtures") body = <FixturesScreen teams={teams} matches={matches} sponsors={sponsors} />;
   else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} />;
-  else if (screen === "food") body = <FoodScreen clubs={clubs} orders={orders} saveOrder={saveOrder} sponsors={sponsors} />;
-  else if (screen === "info") body = <InfoScreen />;
+  else if (screen === "food") body = <FoodScreen clubs={clubs} orders={orders} saveOrder={saveOrder} sponsors={sponsors} defaultClubId={myClub} />;
+  else if (screen === "info") body = <InfoScreen sponsors={sponsors} />;
   else if (screen === "admin")
     body = (
       <AdminScreen
@@ -1437,7 +1887,7 @@ export default function App() {
       <style>{FONT_IMPORT}</style>
       <div style={{ flex: 1, overflowY: "auto" }}>{body}</div>
       <BottomNav screen={screen} setScreen={setScreen} />
-      <div style={{ textAlign: "center", padding: "6px 0", background: C.turf }}>
+      <div style={{ textAlign: "center", padding: "6px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}` }}>
         <button
           onClick={() => setScreen("admin")}
           style={{ background: "none", border: "none", color: "#B89A8E", fontFamily: "Inter, sans-serif", fontSize: 10, cursor: "pointer" }}
