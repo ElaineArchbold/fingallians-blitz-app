@@ -98,12 +98,12 @@ const DEFAULT_ANNOUNCEMENTS = [
 
 const DEFAULT_ORDERS = {};
 const DEFAULT_SPONSORS = [
-  { id: "s1", name: "Sponsor 1", tier: "gold", url: "", logo: "" },
-  { id: "s2", name: "Sponsor 2", tier: "gold", url: "", logo: "" },
-  { id: "s3", name: "Sponsor 3", tier: "silver", url: "", logo: "" },
-  { id: "s4", name: "Sponsor 4", tier: "silver", url: "", logo: "" },
-  { id: "s5", name: "Sponsor 5", tier: "supporter", url: "", logo: "" },
-  { id: "s6", name: "Sponsor 6", tier: "supporter", url: "", logo: "" },
+  { id: "s1", name: "Sponsor 1", url: "", logo: "" },
+  { id: "s2", name: "Sponsor 2", url: "", logo: "" },
+  { id: "s3", name: "Sponsor 3", url: "", logo: "" },
+  { id: "s4", name: "Sponsor 4", url: "", logo: "" },
+  { id: "s5", name: "Sponsor 5", url: "", logo: "" },
+  { id: "s6", name: "Sponsor 6", url: "", logo: "" },
 ];
 
 // Named organiser logins — all have identical full access (fixtures, scores, all food orders,
@@ -267,7 +267,7 @@ function LogoBadge({ size = 60, ringWidth = 3 }) {
 function TeamBadge({ team, size = 40 }) {
   const crest = CRESTS[team.clubId || team.id];
   const grade = team.id?.endsWith("A") ? "A" : team.id?.endsWith("B") ? "B" : null;
-  const badgeSize = Math.max(14, Math.round(size * 0.44));
+  const badgeSize = Math.max(10, Math.round(size * 0.36));
 
   const gradeBadge = grade && (
     <div
@@ -469,10 +469,8 @@ function TopBar({ title, onBack, right, followedTeam }) {
   );
 }
 
-function SponsorStrip({ sponsors, tier }) {
-  const list = tier === "gold"
-    ? sponsors.filter((s) => s.tier === "gold")
-    : sponsors.filter((s) => s.tier === "gold" || s.tier === "silver");
+function SponsorStrip({ sponsors }) {
+  const list = sponsors;
   if (!list.length) return null;
   return (
     <div
@@ -484,6 +482,7 @@ function SponsorStrip({ sponsors, tier }) {
         alignItems: "center",
         justifyContent: "center",
         gap: 8,
+        flexWrap: "wrap",
       }}
     >
       {list.map((s) => (
@@ -497,7 +496,7 @@ function SponsorStrip({ sponsors, tier }) {
             height: 46,
             borderRadius: 10,
             background: C.line,
-            border: `1.5px solid ${s.tier === "gold" ? C.sliotar : C.ash + "88"}`,
+            border: `1.5px solid ${C.ash}88`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -816,7 +815,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
         </div>
       </div>
 
-      <SponsorStrip sponsors={sponsors} tier="gold" />
+      <SponsorStrip sponsors={sponsors} />
 
       <div style={{ padding: "14px 16px 4px" }}>
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
@@ -1129,7 +1128,7 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen, myClubObj 
     <div>
       <TopBar title="Fixtures" followedTeam={myClubObj} />
       <ClubsShowcase clubs={clubs} setScreen={setScreen} />
-      <SponsorStrip sponsors={sponsors} tier="silver" />
+      <SponsorStrip sponsors={sponsors} />
       <div style={{ padding: 16 }}>
         {matches.length === 0 && (
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
@@ -1322,7 +1321,7 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
   return (
     <div>
       <TopBar title="Standings" followedTeam={myClubObj} />
-      <SponsorStrip sponsors={sponsors} tier="silver" />
+      <SponsorStrip sponsors={sponsors} />
       <div style={{ padding: 16 }}>
         {labeled.length === 0 && (
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
@@ -1401,7 +1400,7 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
   );
 }
 
-function InfoScreen({ sponsors, announcements, myClubObj }) {
+function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
   const items = [
     {
       title: "Arrival & registration",
@@ -1415,7 +1414,10 @@ function InfoScreen({ sponsors, announcements, myClubObj }) {
       title: "Parking & directions",
       image: `/parking-map.jpg?v=${CREST_VERSION}`,
       body: "Limited car parking is available at Fingallians GAA, and buses are welcome to park on site. Overflow parking has been kindly provided by the HSE at Swords Business Campus, a short ten-minute walk from the grounds — stewards will be on duty at both locations to guide you.",
-      map: true,
+      maps: [
+        { label: "Open Fingallians GAA in Maps", url: "https://maps.google.com/?q=Fingallians+GAA+Swords" },
+        { label: "Open overflow parking in Maps", url: "https://maps.google.com/?q=HSE+Swords+Business+Campus" },
+      ],
     },
     {
       title: "Pitch Layout",
@@ -1531,14 +1533,16 @@ function InfoScreen({ sponsors, announcements, myClubObj }) {
                 {it.note}
               </div>
             )}
-            {it.map && (
+            {it.maps && it.maps.map((m, i) => (
               <a
-                href="https://maps.google.com/?q=HSE+Swords+Business+Campus"
+                key={i}
+                href={m.url}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  marginTop: 10,
+                  marginTop: i === 0 ? 10 : 8,
+                  marginRight: 8,
                   background: C.pitch,
                   color: "#fff",
                   padding: "8px 12px",
@@ -1549,9 +1553,9 @@ function InfoScreen({ sponsors, announcements, myClubObj }) {
                   textDecoration: "none",
                 }}
               >
-                <MapPin size={14} /> Open overflow parking in Maps
+                <MapPin size={14} /> {m.label}
               </a>
-            )}
+            ))}
           </div>
         ))}
 
@@ -1559,49 +1563,47 @@ function InfoScreen({ sponsors, announcements, myClubObj }) {
           Thank You to Our Sponsors
         </div>
 
-        {["gold", "silver", "supporter"].map((tierKey) => {
-          const inTier = sponsors.filter((s) => s.tier === tierKey);
-          if (!inTier.length) return null;
-          const tierLabel = tierKey === "gold" ? "Main Sponsors" : tierKey === "silver" ? "Silver Sponsors" : "Supporters";
-          const cardSize = tierKey === "gold" ? 76 : tierKey === "silver" ? 56 : 40;
-          return (
-            <div key={tierKey} style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                {tierLabel}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {inTier.map((s) => (
-                  <a
-                    key={s.id}
-                    href={s.url || undefined}
-                    onClick={(e) => !s.url && e.preventDefault()}
-                    style={{
-                      background: "#fff",
-                      border: `1px solid ${tierKey === "gold" ? C.sliotar : C.pitch + "22"}`,
-                      borderRadius: 12,
-                      padding: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minHeight: cardSize,
-                      minWidth: tierKey === "supporter" ? 100 : 130,
-                      flex: tierKey === "gold" ? "1 1 45%" : "0 0 auto",
-                      textDecoration: "none",
-                    }}
-                  >
-                    {s.logo ? (
-                      <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: cardSize - 20, objectFit: "contain" }} />
-                    ) : (
-                      <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: tierKey === "supporter" ? 12 : 14, color: C.ink, textAlign: "center" }}>
-                        {s.name}
-                      </span>
-                    )}
-                  </a>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        {sponsors.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+            {sponsors.map((s) => (
+              <a
+                key={s.id}
+                href={s.url || undefined}
+                onClick={(e) => !s.url && e.preventDefault()}
+                style={{
+                  background: "#fff",
+                  border: `1px solid ${C.pitch}22`,
+                  borderRadius: 12,
+                  padding: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 56,
+                  minWidth: 120,
+                  flex: "1 1 45%",
+                  textDecoration: "none",
+                }}
+              >
+                {s.logo ? (
+                  <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: 40, objectFit: "contain" }} />
+                ) : (
+                  <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, textAlign: "center" }}>
+                    {s.name}
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        )}
+
+        <div style={{ textAlign: "center", marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.pitch}14` }}>
+          <button
+            onClick={onMentorClick}
+            style={{ background: "none", border: "none", color: C.inkSoft, fontFamily: "Inter, sans-serif", fontSize: 11.5, cursor: "pointer", textDecoration: "underline" }}
+          >
+            Mentor sign-in
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1679,7 +1681,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
     return (
       <div>
         <TopBar title="Food ordering" />
-        <SponsorStrip sponsors={sponsors} tier="silver" />
+        <SponsorStrip sponsors={sponsors} />
         <div style={{ padding: 16 }}>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, marginBottom: 12 }}>
             On the day each club gets its own private link straight to this form. For now, pick your club below.
@@ -2132,7 +2134,7 @@ function shuffle(arr) {
   return a;
 }
 
-const LUNCH_MINUTES = 25;
+const LUNCH_MINUTES = 40;
 const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
 const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; // the bit that doesn't fit a whole slot
 
@@ -2238,9 +2240,8 @@ function generateGroupFixtures(teams) {
   ];
 
   const lunchPairs = [
-    shuffledClubs.slice(0, 2),
-    shuffledClubs.slice(2, 4),
-    shuffledClubs.slice(4, 6),
+    shuffledClubs.slice(0, 3),
+    shuffledClubs.slice(3, 6),
     shuffledClubs.slice(6, 8),
   ];
   const lunchWindows = [];
@@ -2820,42 +2821,19 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                   value={s.logo}
                   onChange={(e) => update({ logo: e.target.value })}
                   placeholder="Logo image URL (optional)"
-                  style={{ width: "100%", border: `1px solid ${C.pitch}22`, borderRadius: 6, padding: 8, fontFamily: "Inter, sans-serif", fontSize: 12, marginBottom: 8 }}
+                  style={{ width: "100%", border: `1px solid ${C.pitch}22`, borderRadius: 6, padding: 8, fontFamily: "Inter, sans-serif", fontSize: 12 }}
                 />
                 {s.logo && (
-                  <div style={{ marginBottom: 8, padding: 8, background: C.line, borderRadius: 6, display: "flex", justifyContent: "center" }}>
+                  <div style={{ marginTop: 8, padding: 8, background: C.line, borderRadius: 6, display: "flex", justifyContent: "center" }}>
                     <img src={s.logo} alt={s.name} style={{ maxHeight: 40, maxWidth: "100%", objectFit: "contain" }} />
                   </div>
                 )}
-                <div style={{ display: "flex", gap: 6 }}>
-                  {["gold", "silver", "supporter"].map((tier) => (
-                    <button
-                      key={tier}
-                      onClick={() => {
-                        update({ tier });
-                        if (s.tier !== tier) logAction(adminName, `Changed ${s.name} to ${tier} tier`);
-                      }}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 20,
-                        border: `1px solid ${C.ash}55`,
-                        background: s.tier === tier ? C.ash : "#fff",
-                        color: s.tier === tier ? "#fff" : C.ink,
-                        fontFamily: "Inter, sans-serif",
-                        fontSize: 11,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {tier}
-                    </button>
-                  ))}
-                </div>
               </div>
             );
           })}
           <button
             onClick={() => {
-              const next = [...sponsors, { id: `s${Date.now()}`, name: "New sponsor", tier: "supporter", url: "", logo: "" }];
+              const next = [...sponsors, { id: `s${Date.now()}`, name: "New sponsor", url: "", logo: "" }];
               setSponsors(next);
               persist("sponsors", next);
               logAction(adminName, "Added a new sponsor slot");
@@ -3499,7 +3477,7 @@ export default function App() {
   else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} myClubObj={myClubObj} />;
   else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} myClubObj={myClubObj} />;
   else if (screen === "team") body = <TeamScreen teams={teams} clubs={clubs} matches={matches} orders={orders} saveOrder={saveOrder} sponsors={sponsors} myClub={myClub} myClubName={myClubObj?.name} onOpenWelcome={openWelcome} onChangeClub={changeClub} lunchWindows={lunchWindows} />;
-  else if (screen === "info") body = <InfoScreen sponsors={sponsors} announcements={announcements} myClubObj={myClubObj} />;
+  else if (screen === "info") body = <InfoScreen sponsors={sponsors} announcements={announcements} myClubObj={myClubObj} onMentorClick={() => (adminAuthed ? setScreen("admin") : setLoginModalMode("mentor"))} />;
   else if (screen === "admin" && adminAuthed)
     body = (
       <AdminScreen
@@ -3539,25 +3517,14 @@ export default function App() {
       <style>{FONT_IMPORT}</style>
       <div style={{ flex: 1, overflowY: "auto" }}>{body}</div>
       <BottomNav screen={screen} setScreen={setScreen} />
-      <div style={{ textAlign: "center", padding: "8px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 20 }}>
-        <button
-          onClick={() => {
-            if (adminAuthed) setScreen("admin");
-            else setLoginModalMode("mentor");
-          }}
-          title="Mentor sign-in"
-          style={{ background: "none", border: "none", color: adminAuthed ? C.sliotar : "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
-        >
-          <UserCircle size={20} />
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Mentor</span>
-        </button>
-        {(() => {
-          let existing = null;
-          try {
-            existing = localStorage.getItem("refName");
-          } catch {}
-          if (!existing) return null; // hidden until someone's come in via the referee link once
-          return (
+      {(() => {
+        let existing = null;
+        try {
+          existing = localStorage.getItem("refName");
+        } catch {}
+        if (!existing) return null; // nothing to show in the footer at all until that happens
+        return (
+          <div style={{ textAlign: "center", padding: "8px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 20 }}>
             <button
               onClick={() => setScreen("referee")}
               title="Referee"
@@ -3566,9 +3533,9 @@ export default function App() {
               <Flag size={20} />
               <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9 }}>Referee</span>
             </button>
-          );
-        })()}
-      </div>
+          </div>
+        );
+      })()}
 
       {loginModalMode && (
         <LoginModal
