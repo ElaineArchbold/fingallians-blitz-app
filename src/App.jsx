@@ -99,6 +99,12 @@ const DEFAULT_SPONSORS = [
 const ADMIN_ACCOUNTS = {
   blitz2026: "Organiser",
   Fingallians1884HQ: "Elaine",
+  Sean1884: "Sean",
+  Dara1884: "Dara",
+  Rebecca1884: "Rebecca",
+  Sinead1884: "Sinead",
+  Deco1884: "Deco",
+  Conor1884: "Conor",
 };
 
 // Per-club password for editing that club's food order — pattern: club name + founding year.
@@ -218,7 +224,19 @@ function TeamBadge({ team, size = 40 }) {
           border: `1px solid ${C.pitch}22`,
         }}
       >
-        <img src={crest} alt={team.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+        <img
+          src={crest}
+          alt={team.name}
+          style={{
+            width: "142%",
+            height: "142%",
+            objectFit: "contain",
+            position: "relative",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
       </div>
     );
   }
@@ -281,9 +299,10 @@ function StatusPill({ status }) {
 /* ---------- Bottom nav ---------- */
 function BottomNav({ screen, setScreen }) {
   const items = [
-    { key: "today", label: "Today", icon: Home },
+    { key: "today", label: "Home", icon: Home },
     { key: "fixtures", label: "Fixtures", icon: Trophy },
     { key: "standings", label: "Standings", icon: Users },
+    { key: "food", label: "Food", icon: UtensilsCrossed },
     { key: "info", label: "Info", icon: Info },
   ];
   return (
@@ -450,94 +469,115 @@ function SponsorStrip({ sponsors, tier }) {
 
 /* ================= SCREENS ================= */
 
-function WelcomeScreen({ clubs, onChoose, onSkip }) {
+function WelcomeScreen({ clubs, onChoose, onClose }) {
   return (
     <div
       style={{
         minHeight: "100dvh",
         background: `linear-gradient(160deg, ${C.pitch}, ${C.turf})`,
-        padding: "36px 20px 28px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        overflowY: "auto",
       }}
     >
-      <LogoBadge size={110} ringWidth={4} />
-      <div
-        style={{
-          fontFamily: "Oswald, sans-serif",
-          fontWeight: 700,
-          fontSize: 24,
-          color: C.line,
-          textAlign: "center",
-          marginTop: 18,
-          lineHeight: 1.25,
-        }}
-      >
-        {EVENT.name}
-      </div>
-      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#F5D9A0", marginTop: 6, textAlign: "center" }}>
-        {EVENT.date} · {EVENT.venue}
-      </div>
-      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: "#E9DAD0", marginTop: 18, textAlign: "center", maxWidth: 320 }}>
-        Tap your club to get started
+      <div style={{ width: "100%", display: "flex", justifyContent: "flex-end", padding: "14px 16px 0" }}>
+        <button
+          onClick={onClose}
+          style={{
+            background: "rgba(255,255,255,0.12)",
+            border: "none",
+            borderRadius: 20,
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <X size={18} color={C.line} />
+        </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, width: "100%", maxWidth: 360, marginTop: 22 }}>
-        {clubs.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => onChoose(c.id)}
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: `1px solid ${C.sliotar}55`,
-              borderRadius: 14,
-              padding: "16px 8px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 8,
-              cursor: "pointer",
-            }}
-          >
-            <div
+      <div style={{ padding: "8px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+        <LogoBadge size={84} ringWidth={3} />
+        <div
+          style={{
+            fontFamily: "Oswald, sans-serif",
+            fontWeight: 700,
+            fontSize: 21,
+            color: C.line,
+            textAlign: "center",
+            marginTop: 14,
+            lineHeight: 1.25,
+          }}
+        >
+          {EVENT.name}
+        </div>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: "#F5D9A0", marginTop: 5, textAlign: "center" }}>
+          {EVENT.date} · {EVENT.venue}
+        </div>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#E9DAD0", marginTop: 14, textAlign: "center", maxWidth: 300 }}>
+          Tap your club to follow their fixtures and food order
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%", maxWidth: 360, marginTop: 20 }}>
+          {clubs.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onChoose(c.id)}
               style={{
-                width: 66,
-                height: 66,
-                borderRadius: "50%",
-                padding: 3,
-                background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
+                background: "rgba(255,255,255,0.06)",
+                border: `1px solid ${C.sliotar}55`,
+                borderRadius: 14,
+                padding: "14px 6px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 7,
+                cursor: "pointer",
               }}
             >
-              <TeamBadge team={c} size={60} />
-            </div>
-            <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 12.5, color: C.line, textAlign: "center", lineHeight: 1.2 }}>
-              {c.name}
-            </span>
-          </button>
-        ))}
-      </div>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  padding: 3,
+                  background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
+                }}
+              >
+                <TeamBadge team={c} size={50} />
+              </div>
+              <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 12, color: C.line, textAlign: "center", lineHeight: 1.2 }}>
+                {c.name}
+              </span>
+            </button>
+          ))}
+        </div>
 
-      <button
-        onClick={onSkip}
-        style={{
-          background: "none",
-          border: "none",
-          marginTop: 26,
-          fontFamily: "Inter, sans-serif",
-          fontSize: 13,
-          color: "#E9DAD0",
-          textDecoration: "underline",
-          cursor: "pointer",
-        }}
-      >
-        Just browsing — skip for now
-      </button>
+        <button
+          onClick={onClose}
+          style={{
+            background: "none",
+            border: "none",
+            marginTop: 22,
+            fontFamily: "Inter, sans-serif",
+            fontSize: 13,
+            color: "#E9DAD0",
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          Just browsing — continue without a club
+        </button>
+      </div>
     </div>
   );
 }
 
-function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, onChangeClub }) {
+function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, onChangeClub, onOpenWelcome }) {
   const next = matches.find((m) => m.status !== "finished");
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   return (
@@ -556,7 +596,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
         </div>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "#E9DAD0", marginTop: 4 }}>{EVENT.venue}</div>
 
-        {myClubName && (
+        {myClubName ? (
           <button
             onClick={onChangeClub}
             style={{
@@ -575,6 +615,27 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
             }}
           >
             Following {myClubName} <span style={{ color: "#E9DAD0", fontWeight: 400 }}>· change</span>
+          </button>
+        ) : (
+          <button
+            onClick={onOpenWelcome}
+            style={{
+              marginTop: 10,
+              background: "rgba(255,255,255,0.12)",
+              border: `1px solid ${C.sliotar}`,
+              borderRadius: 20,
+              padding: "6px 14px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontFamily: "Inter, sans-serif",
+              fontSize: 12.5,
+              color: C.line,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            👋 Choose your club
           </button>
         )}
 
@@ -616,54 +677,6 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
             <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
           ))}
           <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
-        </div>
-      </div>
-
-      <div style={{ padding: "18px 0 4px" }}>
-        <div style={{ padding: "0 16px", marginBottom: 10, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-          <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink }}>
-            8 Clubs. One Blitz.
-          </span>
-          <button
-            onClick={() => setScreen("teams")}
-            style={{ background: "none", border: "none", fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.pitch, cursor: "pointer" }}
-          >
-            See all →
-          </button>
-        </div>
-        <div style={{ display: "flex", gap: 14, overflowX: "auto", padding: "4px 16px 12px" }}>
-          {clubs.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setScreen("teams")}
-              style={{
-                background: "none",
-                border: "none",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6,
-                flexShrink: 0,
-                width: 76,
-                cursor: "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 68,
-                  height: 68,
-                  borderRadius: "50%",
-                  padding: 3,
-                  background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
-                }}
-              >
-                <TeamBadge team={c} size={62} />
-              </div>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
-                {c.name}
-              </span>
-            </button>
-          ))}
         </div>
       </div>
 
@@ -713,35 +726,6 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
           </div>
         </div>
       )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: 16 }}>
-        {[
-          { key: "food", label: "Order food", icon: UtensilsCrossed, note: "Club mentors" },
-          { key: "fixtures", label: "Fixtures", icon: Trophy, note: "Times & pitches" },
-          { key: "standings", label: "Standings", icon: Users, note: "Group table" },
-          { key: "info", label: "Parking & info", icon: MapPin, note: "Get here" },
-        ].map((b) => (
-          <button
-            key={b.key}
-            onClick={() => setScreen(b.key)}
-            style={{
-              background: "#fff",
-              border: `1px solid ${C.pitch}22`,
-              borderRadius: 12,
-              padding: "16px 12px",
-              textAlign: "left",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            <b.icon size={20} color={C.pitch} />
-            <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{b.label}</span>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{b.note}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -884,7 +868,59 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
   );
 }
 
-function FixturesScreen({ teams, matches, sponsors }) {
+function ClubsShowcase({ clubs, setScreen }) {
+  return (
+    <div style={{ background: "#fff", padding: "14px 0 10px", borderBottom: `1px solid ${C.pitch}14` }}>
+      <div style={{ padding: "0 16px", marginBottom: 10, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: 16, color: C.ink }}>
+          8 Clubs. One Blitz.
+        </span>
+        <button
+          onClick={() => setScreen("teams")}
+          style={{ background: "none", border: "none", fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.pitch, cursor: "pointer" }}
+        >
+          See all →
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 14, overflowX: "auto", padding: "4px 16px 6px" }}>
+        {clubs.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setScreen("teams")}
+            style={{
+              background: "none",
+              border: "none",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 6,
+              flexShrink: 0,
+              width: 72,
+              cursor: "pointer",
+            }}
+          >
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                padding: 3,
+                background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
+              }}
+            >
+              <TeamBadge team={c} size={58} />
+            </div>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
+              {c.name}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FixturesScreen({ teams, clubs, matches, sponsors, setScreen }) {
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   const groups = {};
   matches.forEach((m) => {
@@ -894,8 +930,14 @@ function FixturesScreen({ teams, matches, sponsors }) {
   return (
     <div>
       <TopBar title="Fixtures" />
+      <ClubsShowcase clubs={clubs} setScreen={setScreen} />
       <SponsorStrip sponsors={sponsors} tier="silver" />
       <div style={{ padding: 16 }}>
+        {matches.length === 0 && (
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
+            Fixtures will appear here once the organiser adds them.
+          </div>
+        )}
         {Object.keys(groups).sort().map((time) => (
           <div key={time} style={{ marginBottom: 16 }}>
             <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
@@ -1336,6 +1378,77 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
   );
 }
 
+/* ---------- Fixture generator: 4 groups of 4, round-robin, 3 pitches ---------- */
+const PITCHES = ["Pitch 1", "Pitch 2", "Pitch 3"];
+const SLOT_MINUTES = 25;
+const START_HOUR = 10;
+const START_MIN = 0;
+
+function generateGroupFixtures(teams) {
+  // Split 16 teams into 4 groups of 4, alternating so a club's A and B teams
+  // land in different groups where possible.
+  const groups = [[], [], [], []];
+  teams.forEach((t, i) => groups[i % 4].push(t));
+
+  // Round-robin for a group of 4 via the circle method: 3 rounds, each with
+  // 2 matches that between them use all 4 teams (so they can run in parallel).
+  const roundRobin4 = (g) => [
+    [[g[0], g[1]], [g[2], g[3]]],
+    [[g[0], g[2]], [g[1], g[3]]],
+    [[g[0], g[3]], [g[1], g[2]]],
+  ];
+
+  let pool = [];
+  groups.forEach((g) => {
+    roundRobin4(g).forEach((round) => {
+      round.forEach(([a, b]) => pool.push({ a, b }));
+    });
+  });
+
+  const fixtures = [];
+  let slotIndex = 0;
+  let guard = 0;
+
+  while (pool.length && guard < 100) {
+    guard++;
+    const used = new Set();
+    const slotMatches = [];
+    for (let i = 0; i < pool.length && slotMatches.length < PITCHES.length; i++) {
+      const m = pool[i];
+      if (!used.has(m.a.id) && !used.has(m.b.id)) {
+        slotMatches.push(m);
+        used.add(m.a.id);
+        used.add(m.b.id);
+        pool.splice(i, 1);
+        i--;
+      }
+    }
+    if (slotMatches.length === 0) break; // safety net, shouldn't trigger
+
+    const totalMin = START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES;
+    const hh = Math.floor(totalMin / 60);
+    const mm = totalMin % 60;
+    const timeLabel = `${hh}:${String(mm).padStart(2, "0")}`;
+
+    slotMatches.forEach((m, pi) => {
+      fixtures.push({
+        id: `m${Date.now()}_${fixtures.length}_${Math.random().toString(36).slice(2, 6)}`,
+        time: timeLabel,
+        pitch: PITCHES[pi],
+        teamA: m.a.id,
+        teamB: m.b.id,
+        goalsA: 0,
+        pointsA: 0,
+        goalsB: 0,
+        pointsB: 0,
+        status: "scheduled",
+      });
+    });
+    slotIndex++;
+  }
+  return fixtures;
+}
+
 /* ---------- Admin ---------- */
 function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist }) {
   const [authed, setAuthed] = useState(false);
@@ -1482,6 +1595,25 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
 
       {tab === "fixtures" && (
         <div style={{ padding: 16 }}>
+          <div style={{ background: C.line, border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
+            <div style={{ fontFamily: "Oswald, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
+              ⚡ Auto-generate the full schedule
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
+              Splits the 16 teams into 4 groups of 4, round-robins within each group (6 matches × 4 groups = 24 total), and spreads them across your 3 pitches at 25-minute intervals from 10:00 — no team double-booked in the same slot. This replaces any fixtures currently listed below.
+            </div>
+            <button
+              onClick={() => {
+                const next = generateGroupFixtures(teams);
+                setMatches(next);
+                persist("matches", next);
+              }}
+              style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              Generate 24-match schedule
+            </button>
+          </div>
+
           <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 14 }}>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
               Add fixture
@@ -1493,12 +1625,16 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 onChange={(e) => setNewFixture((f) => ({ ...f, time: e.target.value }))}
                 style={{ flex: 1, padding: 9, borderRadius: 8, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 13 }}
               />
-              <input
-                placeholder="Pitch e.g. Pitch 1"
+              <select
                 value={newFixture.pitch}
                 onChange={(e) => setNewFixture((f) => ({ ...f, pitch: e.target.value }))}
                 style={{ flex: 1, padding: 9, borderRadius: 8, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 13 }}
-              />
+              >
+                <option value="">Pitch…</option>
+                {PITCHES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
               <select
@@ -1765,14 +1901,7 @@ export default function App() {
       return null;
     }
   });
-  const [screen, setScreen] = useState(() => {
-    try {
-      const known = localStorage.getItem("myClub") || localStorage.getItem("skipWelcome");
-      return known ? "today" : "welcome";
-    } catch {
-      return "welcome";
-    }
-  });
+  const [screen, setScreen] = useState("today");
 
   const chooseClub = useCallback((clubId) => {
     try {
@@ -1782,11 +1911,12 @@ export default function App() {
     setScreen("today");
   }, []);
 
-  const skipWelcome = useCallback(() => {
-    try {
-      localStorage.setItem("skipWelcome", "1");
-    } catch {}
+  const closeWelcome = useCallback(() => {
     setScreen("today");
+  }, []);
+
+  const openWelcome = useCallback(() => {
+    setScreen("welcome");
   }, []);
 
   const changeClub = useCallback(() => {
@@ -1855,14 +1985,14 @@ export default function App() {
   }
 
   if (screen === "welcome") {
-    return <WelcomeScreen clubs={clubs} onChoose={chooseClub} onSkip={skipWelcome} />;
+    return <WelcomeScreen clubs={clubs} onChoose={chooseClub} onClose={closeWelcome} />;
   }
 
   let body;
-  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} onChangeClub={changeClub} />;
+  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} onChangeClub={changeClub} onOpenWelcome={openWelcome} />;
   else if (screen === "teams") body = <TeamsScreen teams={teams} matches={matches} setScreen={setScreen} setSelectedTeam={setSelectedTeam} />;
   else if (screen === "teamDetail") body = <TeamDetailScreen teamId={selectedTeam} teams={teams} matches={matches} setScreen={setScreen} />;
-  else if (screen === "fixtures") body = <FixturesScreen teams={teams} matches={matches} sponsors={sponsors} />;
+  else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} />;
   else if (screen === "standings") body = <StandingsScreen teams={teams} matches={matches} sponsors={sponsors} />;
   else if (screen === "food") body = <FoodScreen clubs={clubs} orders={orders} saveOrder={saveOrder} sponsors={sponsors} defaultClubId={myClub} />;
   else if (screen === "info") body = <InfoScreen sponsors={sponsors} />;
