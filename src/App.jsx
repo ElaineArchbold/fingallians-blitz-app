@@ -147,11 +147,23 @@ const API_BASE = "/api/kv";
 async function loadShared(key, fallback) {
   try {
     const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`);
-    if (!res.ok) throw new Error("not found");
+    if (res.status === 404) {
+      // Genuinely doesn't exist yet in the database — safe to seed the default.
+      await saveShared(key, fallback);
+      return fallback;
+    }
+    if (!res.ok) {
+      // Some other failure (500, rate limit, cold-start hiccup after a deploy, etc).
+      // Do NOT overwrite whatever's actually stored — just use the fallback for
+      // this one load so the app still renders something.
+      console.error("loadShared: non-OK response, not overwriting stored data", key, res.status);
+      return fallback;
+    }
     const data = await res.json();
     return JSON.parse(data.value);
-  } catch {
-    await saveShared(key, fallback);
+  } catch (e) {
+    // Network error / fetch threw entirely — same reasoning, don't touch storage.
+    console.error("loadShared: request failed, not overwriting stored data", key, e);
     return fallback;
   }
 }
@@ -2670,6 +2682,51 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
               Download backup (.json)
+            </button>
+          </div>
+
+          <div style={{ background: "#fff", border: `2px solid ${C.pitch}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 4 }}>
+              🗑️ Reset test data
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
+              Clears fixtures, scores, food orders, announcements, and lunch windows — back to a completely clean slate, as if the event hadn't started yet. Your 8 clubs, sponsors, and admin logins are <b>not</b> affected. Use this to wipe today's test run before the real event. Downloads a backup automatically first, just in case.
+            </div>
+            <button
+              onClick={() => {
+                const sure = window.confirm(
+                  "This will permanently clear all fixtures, scores, food orders, announcements, and lunch windows. Teams, sponsors and logins are kept. This cannot be undone (though a backup will download first). Continue?"
+                );
+                if (!sure) return;
+                const typed = window.prompt('Type RESET to confirm:');
+                if (typed !== "RESET") return;
+
+                // Auto-download a safety backup before wiping anything.
+                const backup = { exportedAt: new Date().toISOString(), teams, matches, orders, announcements, sponsors, auditLog };
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                a.href = url;
+                a.download = `blitz-backup-before-reset-${stamp}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                setMatches(DEFAULT_MATCHES);
+                persist("matches", DEFAULT_MATCHES);
+                setOrders(DEFAULT_ORDERS);
+                persist("orders", DEFAULT_ORDERS);
+                setAnnouncements(DEFAULT_ANNOUNCEMENTS);
+                persist("announcements", DEFAULT_ANNOUNCEMENTS);
+                setLunchWindows({ A: null, B: null });
+                persist("lunchWindows", { A: null, B: null });
+                logAction(adminName, "Reset all test data (fixtures, orders, announcements, lunch windows) to a clean slate");
+              }}
+              style={{ width: "100%", background: "#fff", border: `1.5px solid ${C.pitch}`, borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch, cursor: "pointer" }}
+            >
+              Reset everything to a clean slate
             </button>
           </div>
 
