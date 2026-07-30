@@ -260,32 +260,62 @@ function LogoBadge({ size = 60, ringWidth = 3 }) {
 
 function TeamBadge({ team, size = 40 }) {
   const crest = CRESTS[team.clubId || team.id];
+  const grade = team.id?.endsWith("A") ? "A" : team.id?.endsWith("B") ? "B" : null;
+  const badgeSize = Math.max(14, Math.round(size * 0.44));
+
+  const gradeBadge = grade && (
+    <div
+      style={{
+        position: "absolute",
+        bottom: -badgeSize * 0.08,
+        right: -badgeSize * 0.08,
+        width: badgeSize,
+        height: badgeSize,
+        borderRadius: "50%",
+        background: grade === "A" ? C.pitch : C.sliotar,
+        border: "1.5px solid #fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Poppins, sans-serif",
+        fontWeight: 800,
+        fontSize: badgeSize * 0.62,
+        color: grade === "A" ? "#fff" : C.ink,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
+      }}
+    >
+      {grade}
+    </div>
+  );
+
   if (crest) {
     return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          background: "#fff",
-          flexShrink: 0,
-          boxShadow: "0 2px 4px rgba(0,0,0,0.25)",
-          overflow: "hidden",
-          border: `1px solid ${C.pitch}22`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <img
-          src={crest}
-          alt={team.name}
+      <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+        <div
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
+            width: size,
+            height: size,
+            borderRadius: "50%",
+            background: "#fff",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.25)",
+            overflow: "hidden",
+            border: `1px solid ${C.pitch}22`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
-        />
+        >
+          <img
+            src={crest}
+            alt={team.name}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+            }}
+          />
+        </div>
+        {gradeBadge}
       </div>
     );
   }
@@ -298,24 +328,26 @@ function TeamBadge({ team, size = 40 }) {
     .join("")
     .toUpperCase();
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: `radial-gradient(circle at 30% 25%, ${team.color}dd, ${team.color})`,
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Poppins, sans-serif",
-        fontWeight: 600,
-        fontSize: size * 0.4,
-        flexShrink: 0,
-        boxShadow: "0 2px 4px rgba(0,0,0,0.25)",
-      }}
-    >
-      {initials}
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: `radial-gradient(circle at 30% 25%, ${team.color}dd, ${team.color})`,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Poppins, sans-serif",
+          fontWeight: 600,
+          fontSize: size * 0.4,
+          boxShadow: "0 2px 4px rgba(0,0,0,0.25)",
+        }}
+      >
+        {initials}
+      </div>
+      {gradeBadge}
     </div>
   );
 }
@@ -1624,10 +1656,11 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
         orders[clubId] || {
           contactName: "",
           mobile: "",
-          players: 0,
-          mentors: 0,
+          playersA: 0,
+          mentorsA: 0,
+          playersB: 0,
+          mentorsB: 0,
           sausageRolls: 0,
-          burgers: 0,
           collectionTime: "",
           paid: false,
         }
@@ -1731,7 +1764,9 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
 
   const set = (k, v) => setOrder((o) => ({ ...o, [k]: v }));
   const totalBreakfast = order?.sausageRolls || 0;
-  const totalLunch = order?.burgers || 0;
+  const teamATotal = (order?.playersA || 0) + (order?.mentorsA || 0);
+  const teamBTotal = (order?.playersB || 0) + (order?.mentorsB || 0);
+  const totalLunch = teamATotal + teamBTotal;
   const amountDue = totalBreakfast * SAUSAGE_BAP_PRICE;
 
   return (
@@ -1772,10 +1807,22 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
           />
         </div>
 
-        <Stepper label="Players" value={order?.players || 0} onChange={(v) => set("players", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
-        <Stepper label="Mentors" value={order?.mentors || 0} onChange={(v) => set("mentors", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginTop: 4, marginBottom: 8 }}>
+          A Team headcount
+        </div>
+        <Stepper label="Players" value={order?.playersA || 0} onChange={(v) => set("playersA", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Mentors" value={order?.mentorsA || 0} onChange={(v) => set("mentorsA", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginTop: 10, marginBottom: 8 }}>
+          B Team headcount
+        </div>
+        <Stepper label="Players" value={order?.playersB || 0} onChange={(v) => set("playersB", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Mentors" value={order?.mentorsB || 0} onChange={(v) => set("mentorsB", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginTop: 10, marginBottom: 8 }}>
+          Breakfast
+        </div>
         <Stepper label="Swanny's Breakfast Banger (sausage in a bun)" value={order?.sausageRolls || 0} onChange={(v) => set("sausageRolls", v)} sub={`Breakfast, ready on arrival — €${SAUSAGE_BAP_PRICE.toFixed(2)} each, paid on the day`} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
-        <Stepper label="Beef burger headcount" value={order?.burgers || 0} onChange={(v) => set("burgers", v)} sub="Lunch — 1 per child/mentor, included by voucher" disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
 
         <div style={{ background: C.line, border: `1px solid ${C.ash}55`, borderRadius: 12, padding: 14, marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1783,7 +1830,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 20, color: C.pitch }}>{totalBreakfast}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.ash}33` }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch (burgers — free)</span>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch (burgers — free)<br /><span style={{ fontSize: 10.5, fontWeight: 400, color: C.inkSoft }}>A team: {teamATotal} · B team: {teamBTotal}</span></span>
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 20, color: C.pitch }}>{totalLunch}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2250,7 +2297,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       const o = orders[t.id];
       if (!o) return acc;
       acc.sausageRolls += o.sausageRolls || 0;
-      acc.burgers += o.burgers || 0;
+      acc.burgers += (o.playersA || 0) + (o.mentorsA || 0) + (o.playersB || 0) + (o.mentorsB || 0);
       return acc;
     },
     { sausageRolls: 0, burgers: 0 }
@@ -2404,7 +2451,8 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 </div>
                 {o && (
                   <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginTop: 4 }}>
-                    {o.contactName} · {o.mobile} · {o.sausageRolls} Swanny's Breakfast Bangers (€{(o.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)}), {o.burgers} burgers (free)
+                    {o.contactName} · {o.mobile} · {o.sausageRolls} Swanny's Breakfast Bangers (€{(o.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)})<br />
+                    A team: {(o.playersA || 0)} players, {(o.mentorsA || 0)} mentors · B team: {(o.playersB || 0)} players, {(o.mentorsB || 0)} mentors · {(o.playersA || 0) + (o.mentorsA || 0) + (o.playersB || 0) + (o.mentorsB || 0)} burgers total (free)
                   </div>
                 )}
               </div>
