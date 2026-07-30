@@ -44,6 +44,9 @@ const EVENT = {
   date: "Saturday 22 August 2026",
   venue: "Lawless Memorial Park, Fingallians GAA, Swords",
   registration: "9:15 a.m.",
+  procession: "9:30 a.m.",
+  firstThrowIn: "10:00 a.m.",
+  targetFinish: "3:00 p.m.",
 };
 
 const WELCOME_PARAGRAPHS = [
@@ -720,6 +723,32 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
         >
           <span style={{ color: C.sliotar, fontWeight: 700 }}>Registration by {EVENT.registration}</span> — register, then head to the club ball wall for a team photo.
         </div>
+
+        <div
+          style={{
+            marginTop: 10,
+            background: "rgba(0,0,0,0.18)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 10,
+            padding: "10px 12px",
+          }}
+        >
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+            Order of the Day
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+            {[
+              ["Procession", EVENT.procession],
+              ["First throw-in", EVENT.firstThrowIn],
+              ["Target finish", EVENT.targetFinish],
+            ].map(([label, time]) => (
+              <div key={label} style={{ textAlign: "center", flex: 1 }}>
+                <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 13, color: "#fff" }}>{time}</div>
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <SponsorStrip sponsors={sponsors} tier="gold" />
@@ -1284,7 +1313,7 @@ function InfoScreen({ sponsors, announcements }) {
   const items = [
     {
       title: "Arrival & registration",
-      body: "Teams are to arrive by 9:15 a.m. for registration at Lawless Park, Fingallians. On arrival, register your team then proceed to the club ball wall for a team photo.",
+      body: "Teams are to arrive by 9:15 a.m. for registration at Lawless Park, Fingallians. On arrival, register your team then proceed to the club ball wall for a team photo. Opening procession at 9:30 a.m., first throw-in at 10:00 a.m., with a target finish of 3:00 p.m.",
     },
     {
       title: "Food & beverages",
@@ -1683,6 +1712,39 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
   );
 }
 
+function computeLunchWindow(teamId, matches) {
+  if (!teamId) return null;
+  const timeToMin = (t) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  const minToTime = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `${h}:${String(m).padStart(2, "0")}`;
+  };
+  const MATCH_DURATION_MIN = 23; // 20 min play + 3 min half-time, per the playing rules
+  const myTimes = matches
+    .filter((m) => (m.teamA === teamId || m.teamB === teamId) && !m.finalLabel)
+    .map((m) => timeToMin(m.time))
+    .sort((a, b) => a - b);
+  if (myTimes.length < 2) return null;
+
+  let bestGap = -1, bestFrom = null, bestTo = null;
+  for (let i = 0; i < myTimes.length - 1; i++) {
+    const freeFrom = myTimes[i] + MATCH_DURATION_MIN;
+    const freeTo = myTimes[i + 1];
+    const gap = freeTo - freeFrom;
+    if (gap > bestGap) {
+      bestGap = gap;
+      bestFrom = freeFrom;
+      bestTo = freeTo;
+    }
+  }
+  if (bestGap < 20) return null; // no meaningful break available in this team's schedule
+  return { from: minToTime(bestFrom), to: minToTime(bestTo), minutes: bestGap };
+}
+
 function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub, myClubName, onOpenWelcome, onChangeClub }) {
   if (!myClub) {
     return (
@@ -1729,6 +1791,8 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
   };
   const infoA = teamA ? groupInfoFor(teamA.id) : null;
   const infoB = teamB ? groupInfoFor(teamB.id) : null;
+  const lunchA = teamA ? computeLunchWindow(teamA.id, matches) : null;
+  const lunchB = teamB ? computeLunchWindow(teamB.id, matches) : null;
 
   return (
     <div style={{ paddingBottom: 20 }}>
@@ -1763,6 +1827,32 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
                 </>
               ) : (
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, padding: "6px 0" }}>Not started</div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 4 }}>
+          Lunch Window
+        </div>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginBottom: 8, lineHeight: 1.4 }}>
+          Estimated from your actual fixture gaps — we aim for around an hour, but it depends how your matches land.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+          {[{ label: "A Team", lunch: lunchA }, { label: "B Team", lunch: lunchB }].map(({ label, lunch }) => (
+            <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, textAlign: "center" }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
+              {lunch ? (
+                <>
+                  <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.pitch }}>
+                    {lunch.from}–{lunch.to}
+                  </div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: lunch.minutes >= 55 ? C.inkSoft : C.sliotar, fontWeight: lunch.minutes >= 55 ? 400 : 700 }}>
+                    {lunch.minutes} min{lunch.minutes < 55 ? " — tight" : ""}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, padding: "6px 0" }}>Add fixtures to see this</div>
               )}
             </div>
           ))}
