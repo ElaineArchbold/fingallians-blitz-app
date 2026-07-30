@@ -178,13 +178,20 @@ async function loadShared(key, fallback) {
 }
 async function saveShared(key, value) {
   try {
-    await fetch(API_BASE, {
+    const res = await fetch(API_BASE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value: JSON.stringify(value) }),
     });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("save failed — server responded with an error", key, res.status, text);
+      return { ok: false, error: `Server error ${res.status}` };
+    }
+    return { ok: true };
   } catch (e) {
-    console.error("save failed", key, e);
+    console.error("save failed — request could not be sent", key, e);
+    return { ok: false, error: e.message || "Network error" };
   }
 }
 
@@ -2182,6 +2189,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   const [tab, setTab] = useState("orders");
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [newFixture, setNewFixture] = useState({ time: "", pitch: "", teamA: "", teamB: "" });
+  const [saveError, setSaveError] = useState(null);
 
   if (!authed) {
     return (
@@ -2257,7 +2265,10 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
     const updatedList = latest.map((m) => (m.id === id ? { ...m, ...patch } : m));
     const next = autoFillFinals(updatedList, teams);
     setMatches(next);
-    persist("matches", next);
+    persist("matches", next).then((r) => {
+      if (!r.ok) setSaveError(`Score save failed (${r.error}) — this change may only be showing on your screen. Try again.`);
+      else setSaveError(null);
+    });
 
     // If auto-fill just populated a final that was blank before, log it separately.
     next.forEach((m, i) => {
@@ -2322,6 +2333,15 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
           </button>
         ))}
       </div>
+
+      {saveError && (
+        <div style={{ margin: "10px 16px 0", background: "#fff", border: `2px solid ${C.pitch}`, borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.pitch, fontWeight: 600, lineHeight: 1.5 }}>⚠️ {saveError}</div>
+          <button onClick={() => setSaveError(null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.pitch, flexShrink: 0 }}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {tab === "orders" && (
         <div style={{ padding: 16 }}>
@@ -2402,7 +2422,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               Splits the 8 A teams and 8 B teams into their own groups of 4 (As only ever play As, Bs only ever play Bs) and schedules in stages: both grades play rounds 1–2 interleaved across all 3 pitches, then <b>A grade gets a fixed lunch break</b> (~{LUNCH_MINUTES} min) while B plays its round 3, then <b>B grade gets a fixed lunch break</b> while A plays its round 3. No team is ever double-booked or back-to-back. Finishes with 4 finals on the main pitch: A Cup, B Cup, then A Shield, B Shield. All final-day teams left blank until group placings are known. This replaces any fixtures currently listed below.
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 const hasResults = matches.some((m) => m.status === "finished" || m.goalsA > 0 || m.pointsA > 0 || m.goalsB > 0 || m.pointsB > 0);
                 if (hasResults) {
                   const ok = window.confirm(
@@ -2410,11 +2430,15 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                   );
                   if (!ok) return;
                 }
+                setSaveError(null);
                 const { fixtures, lunchWindows: newLunch } = generateGroupFixtures(teams);
                 setMatches(fixtures);
-                persist("matches", fixtures);
                 setLunchWindows(newLunch);
-                persist("lunchWindows", newLunch);
+                const [r1, r2] = await Promise.all([persist("matches", fixtures), persist("lunchWindows", newLunch)]);
+                if (!r1.ok || !r2.ok) {
+                  setSaveError(`Save to the database failed (${r1.error || r2.error}). The schedule is showing on THIS screen only and has NOT been saved — reloading or checking on another device will show the old data. Please try again, and if it keeps failing, this needs checking on the Vercel/Turso side.`);
+                  return;
+                }
                 logAction(adminName, `Auto-generated the full schedule with fixed A/B lunch breaks (replaced ${matches.length} existing fixture${matches.length === 1 ? "" : "s"})`);
               }}
               style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
