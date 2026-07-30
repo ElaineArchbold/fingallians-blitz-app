@@ -186,7 +186,8 @@ async function saveShared(key, value) {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.error("save failed — server responded with an error", key, res.status, text);
-      return { ok: false, error: `Server error ${res.status}` };
+      const detail = text ? text.slice(0, 200) : "no further detail returned";
+      return { ok: false, error: `Server error ${res.status}: ${detail}` };
     }
     return { ok: true };
   } catch (e) {
