@@ -1508,7 +1508,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
             <TeamBadge team={team} size={40} />
             <div>
               <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 15, color: C.ink }}>{team.name}</div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>Enter your club password to view or edit the food order</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>Enter your club password to view or edit the food order. Don't have it? Contact your team mentor.</div>
             </div>
           </div>
           <div style={{ position: "relative", marginBottom: 8 }}>
@@ -1532,7 +1532,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId }) {
           </div>
           {passwordError && (
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.pitch, marginBottom: 8 }}>
-              That doesn't match — check with your mentor coordinator for the club password.
+              That doesn't match — contact your team mentor for the club password.
             </div>
           )}
           <button
@@ -1669,11 +1669,29 @@ function generateGroupFixtures(teams) {
   const fixtures = [];
   let slotIndex = 0;
   let guard = 0;
+  const lastPlayedSlot = {}; // teamId -> slot index they last played in
 
   while (pool.length && guard < 100) {
     guard++;
     const used = new Set();
     const slotMatches = [];
+
+    // Pass 1: only take matches where neither team played in the immediately
+    // preceding slot — guarantees a rest gap wherever the pool allows it.
+    for (let i = 0; i < pool.length && slotMatches.length < PITCHES.length; i++) {
+      const m = pool[i];
+      const aRested = lastPlayedSlot[m.a.id] === undefined || lastPlayedSlot[m.a.id] < slotIndex - 1;
+      const bRested = lastPlayedSlot[m.b.id] === undefined || lastPlayedSlot[m.b.id] < slotIndex - 1;
+      if (!used.has(m.a.id) && !used.has(m.b.id) && aRested && bRested) {
+        slotMatches.push(m);
+        used.add(m.a.id);
+        used.add(m.b.id);
+        pool.splice(i, 1);
+        i--;
+      }
+    }
+    // Pass 2 (fallback): if the pitches still aren't full, allow back-to-back
+    // matches rather than leaving a pitch empty — better than wasting the slot.
     for (let i = 0; i < pool.length && slotMatches.length < PITCHES.length; i++) {
       const m = pool[i];
       if (!used.has(m.a.id) && !used.has(m.b.id)) {
@@ -1689,6 +1707,8 @@ function generateGroupFixtures(teams) {
     const timeLabel = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES);
 
     slotMatches.forEach((m, pi) => {
+      lastPlayedSlot[m.a.id] = slotIndex;
+      lastPlayedSlot[m.b.id] = slotIndex;
       fixtures.push({
         id: `m${Date.now()}_${fixtures.length}_${Math.random().toString(36).slice(2, 6)}`,
         time: timeLabel,
@@ -1913,7 +1933,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Splits the 8 A teams and 8 B teams into their own groups of 4 (As only ever play As, Bs only ever play Bs), round-robins within each group (24 group matches total), and spreads them across your 3 pitches at 25-minute intervals from 10:00 — no team double-booked in the same slot. Adds an A Final and a B Final at the end on the main pitch (Pitch 2 and 3), teams left blank until group winners are known. This replaces any fixtures currently listed below.
+              Splits the 8 A teams and 8 B teams into their own groups of 4 (As only ever play As, Bs only ever play Bs), round-robins within each group (24 group matches total), and spreads them across your 3 pitches at 25-minute intervals from 10:00 — no team double-booked in the same slot, and every team gets at least one rest slot between its own matches wherever the schedule allows it. Adds an A Final and a B Final at the end on the main pitch (Pitch 2 and 3), teams left blank until group winners are known. This replaces any fixtures currently listed below.
             </div>
             <button
               onClick={() => {
