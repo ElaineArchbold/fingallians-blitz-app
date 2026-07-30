@@ -481,19 +481,16 @@ function WelcomeScreen({ clubs, onChoose, onClose, myClubName }) {
 
         <div
           style={{
-            width: 68,
-            height: 68,
-            borderRadius: 18,
-            background: "#fff",
-            border: `2.5px solid ${C.sliotar}`,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+            width: 150,
+            height: 179,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             marginTop: 4,
+            filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.35))",
           }}
         >
-          <img src={BADGE_LOGO} alt="Fingallians badge" style={{ width: "72%", height: "72%", objectFit: "contain" }} />
+          <img src={BADGE_LOGO} alt="Fingallians Hurling Blitz badge" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
         </div>
 
         <div
@@ -573,26 +570,26 @@ function WelcomeScreen({ clubs, onChoose, onClose, myClubName }) {
           {myClubName ? "Pick a different club" : "Choose your club"}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
           {clubs.map((c) => (
             <button
               key={c.id}
               onClick={() => onChoose(c.id)}
               style={{
                 background: "#FFF7F6",
-                border: `1.5px solid ${HERO_BRIGHT}22`,
-                borderRadius: 12,
-                padding: "10px 3px",
+                border: `2px solid ${HERO_BRIGHT}33`,
+                borderRadius: 16,
+                padding: "18px 8px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 5,
+                gap: 10,
                 cursor: "pointer",
                 minWidth: 0,
               }}
             >
-              <TeamBadge team={c} size={42} />
-              <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 8.5, color: C.ink, textAlign: "center", lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
+              <TeamBadge team={c} size={76} />
+              <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 13, color: C.ink, textAlign: "center", lineHeight: 1.25 }}>
                 {c.name}
               </span>
             </button>
@@ -745,20 +742,40 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
           Pitch Layout
         </div>
         <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12 }}>
-          <svg viewBox="0 0 320 150" style={{ width: "100%", height: "auto" }}>
-            {[0, 1, 2].map((i) => (
-              <g key={i} transform={`translate(${8 + i * 106}, 10)`}>
-                <rect x="0" y="0" width="98" height="130" rx="6" fill="#3E7350" stroke="#1C1613" strokeWidth="1.5" />
-                <rect x="6" y="6" width="86" height="118" rx="3" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
-                <line x1="6" y1="65" x2="92" y2="65" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
-                <circle cx="49" cy="65" r="12" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
-                <text x="49" y="72" textAnchor="middle" fontFamily="Poppins, sans-serif" fontSize="26" fill="#FBF8F3">{i + 1}</text>
-                <text x="49" y="115" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="700" fill="#FBF8F3" letterSpacing="1">PITCH {i + 1}</text>
-              </g>
-            ))}
+          <svg viewBox="0 0 340 190" style={{ width: "100%", height: "auto" }}>
+            {/* Main pitch (background) — split into two */}
+            <g transform="translate(90, 10)">
+              <rect x="0" y="0" width="240" height="90" rx="6" fill="#3E7350" stroke="#1C1613" strokeWidth="1.5" />
+              <rect x="5" y="5" width="230" height="80" rx="3" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
+              <line x1="120" y1="5" x2="120" y2="85" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
+              <circle cx="60" cy="45" r="16" fill="none" stroke="#FBF8F3" strokeWidth="1.3" opacity="0.5" />
+              <circle cx="180" cy="45" r="16" fill="none" stroke="#FBF8F3" strokeWidth="1.3" opacity="0.5" />
+              <text x="60" y="52" textAnchor="middle" fontFamily="Poppins, sans-serif" fontSize="20" fill="#FBF8F3">1</text>
+              <text x="180" y="52" textAnchor="middle" fontFamily="Poppins, sans-serif" fontSize="20" fill="#FBF8F3">2</text>
+              <text x="120" y="-6" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="700" fill={C.inkSoft} letterSpacing="1">MAIN PITCH — SPLIT IN TWO</text>
+            </g>
+
+            {/* All-weather pitch (front, single) */}
+            <g transform="translate(8, 115)">
+              <rect x="0" y="0" width="120" height="65" rx="6" fill="#2E6B5E" stroke="#1C1613" strokeWidth="1.5" />
+              <rect x="5" y="5" width="110" height="55" rx="3" fill="none" stroke="#FBF8F3" strokeWidth="1.5" opacity="0.6" />
+              <circle cx="60" cy="32" r="12" fill="none" stroke="#FBF8F3" strokeWidth="1.3" opacity="0.5" />
+              <text x="60" y="30" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="8" fontWeight="700" fill="#FBF8F3" letterSpacing="0.5">ALL-WEATHER</text>
+              <text x="60" y="42" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="8" fontWeight="700" fill="#FBF8F3" letterSpacing="0.5">PITCH 3</text>
+            </g>
+
+            {/* Clubhouse (beside the all-weather pitch) */}
+            <g transform="translate(138, 128)">
+              <rect x="0" y="10" width="70" height="40" fill={C.ash} stroke="#1C1613" strokeWidth="1.5" />
+              <polygon points="0,10 35,-8 70,10" fill="#8C5A32" stroke="#1C1613" strokeWidth="1.5" />
+              <rect x="14" y="24" width="12" height="14" fill="#FBF8F3" opacity="0.85" />
+              <rect x="32" y="24" width="12" height="14" fill="#FBF8F3" opacity="0.85" />
+              <rect x="50" y="24" width="12" height="14" fill="#FBF8F3" opacity="0.85" />
+              <text x="35" y="62" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="8" fontWeight="700" fill={C.inkSoft} letterSpacing="0.5">CLUBHOUSE</text>
+            </g>
           </svg>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginTop: 8, textAlign: "center" }}>
-            Illustrative layout — ask an organiser on the day for exact pitch locations at Lawless Park.
+            Illustrative layout, not to scale — ask an organiser on the day for exact pitch locations at Lawless Park.
           </div>
         </div>
       </div>
@@ -959,8 +976,8 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
 
 function ClubsShowcase({ clubs, setScreen }) {
   return (
-    <div style={{ background: "#fff", padding: "12px 12px 10px", borderBottom: `1px solid ${C.pitch}14` }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+    <div style={{ background: "#fff", padding: "16px 12px 14px", borderBottom: `1px solid ${C.pitch}14` }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
         {clubs.map((c) => (
           <button
             key={c.id}
@@ -971,7 +988,7 @@ function ClubsShowcase({ clubs, setScreen }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 4,
+              gap: 5,
               cursor: "pointer",
               padding: 0,
               minWidth: 0,
@@ -979,16 +996,16 @@ function ClubsShowcase({ clubs, setScreen }) {
           >
             <div
               style={{
-                width: 52,
-                height: 52,
+                width: 68,
+                height: 68,
                 borderRadius: "50%",
-                padding: 2.5,
+                padding: 3,
                 background: `linear-gradient(135deg, ${C.sliotar}, ${c.color})`,
               }}
             >
-              <TeamBadge team={c} size={47} />
+              <TeamBadge team={c} size={62} />
             </div>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 9, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 600, color: C.ink, textAlign: "center", lineHeight: 1.2 }}>
               {c.name}
             </span>
           </button>
