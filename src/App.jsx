@@ -116,16 +116,18 @@ const DEFAULT_SPONSORS = [
 ];
 
 // Named organiser logins — all have identical full access (fixtures, scores, all food orders,
-// announcements, sponsors). Add/remove people here; swap out passwords whenever you like.
+// announcements, sponsors). Passcode is simply the person's own first name (case-insensitive
+// on entry, see findAdminByCode below). Add/remove people here any time.
 const ADMIN_ACCOUNTS = {
-  blitz2026: "Mentor",
-  elaine1884: "Elaine",
-  Sean1884: "Sean",
-  Dara1884: "Dara",
-  Rebecca1884: "Rebecca",
-  Sinead1884: "Sinead",
-  Deco1884: "Deco",
-  Conor1884: "Conor",
+  Elaine: "Elaine",
+  Conor: "Conor",
+  Dara: "Dara",
+  Deco: "Deco",
+  Mark: "Mark",
+  Sean: "Sean",
+  Sinead: "Sinead",
+  Pat: "Pat",
+  Rebecca: "Rebecca",
 };
 function findAdminByCode(code) {
   const trimmed = (code || "").trim().toLowerCase();
