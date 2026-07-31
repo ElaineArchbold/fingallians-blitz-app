@@ -48,6 +48,15 @@ const EVENT = {
   firstThrowIn: "10:00 a.m.",
   targetFinish: "3:00 p.m.",
 };
+// Used to check "is it actually event day" — separate from the display string
+// above, so scheduled announcements can't accidentally fire on some random
+// Tuesday just because the time-of-day happens to match.
+const EVENT_YEAR = 2026;
+const EVENT_MONTH = 7; // August — JS months are 0-indexed
+const EVENT_DAY = 22;
+function isEventDay(d = new Date()) {
+  return d.getFullYear() === EVENT_YEAR && d.getMonth() === EVENT_MONTH && d.getDate() === EVENT_DAY;
+}
 
 const WELCOME_PARAGRAPHS = [
   "A Chairde,",
@@ -1330,12 +1339,13 @@ function computeScheduledAnnouncements(matches, lunchWindows, clubs) {
     return h * 60 + (m || 0);
   };
   const minToLabel = (mins) => `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, "0")}`;
+  const LEAD_MINUTES = 10; // every scheduled announcement fires this many minutes ahead of its event
 
-  // Registration — fires at the published registration time, no schedule needed.
+  // Registration — fires 10 minutes ahead of the published registration time.
   list.push({
     id: "sched-registration",
-    triggerMin: timeToMin(EVENT.registration),
-    text: "📢 Registration is now open! Head to the clubhouse to register your team, then over to the club ball wall for your team photo.",
+    triggerMin: timeToMin(EVENT.registration) - LEAD_MINUTES,
+    text: `📢 Registration opens shortly, at ${EVENT.registration}! Head to the clubhouse to register your team, then over to the club ball wall for your team photo.`,
   });
 
   // One per lunch sitting, naming the clubs in it — fires 10 minutes ahead so
@@ -1345,18 +1355,18 @@ function computeScheduledAnnouncements(matches, lunchWindows, clubs) {
       const names = (w.clubs || []).map(clubName).join(", ");
       list.push({
         id: `sched-lunch-${i}`,
-        triggerMin: timeToMin(w.from) - 10,
+        triggerMin: timeToMin(w.from) - LEAD_MINUTES,
         text: `🍔 Burger break coming up at ${w.from} for: ${names}. Head to the BBQ area when your match finishes.`,
       });
     });
   }
 
-  // Finals — fires 15 minutes ahead of the Cup Final kickoff.
+  // Finals — fires 10 minutes ahead of the Cup Final kickoff.
   const cupFinal = matches.find((m) => m.finalLabel === "A Cup Final");
   if (cupFinal) {
     list.push({
       id: "sched-finals",
-      triggerMin: timeToMin(cupFinal.time) - 15,
+      triggerMin: timeToMin(cupFinal.time) - LEAD_MINUTES,
       text: `🏆 Finals are almost here! Make your way to the main pitch — Cup Finals kick off at ${cupFinal.time}.`,
     });
   }
@@ -3868,9 +3878,10 @@ export default function App() {
       try {
         seenWelcome = localStorage.getItem("seenWelcomeMessage");
       } catch {}
+      const clubAlreadyOrdered = myClub ? !!o[myClub] : false;
       if (!seenWelcome) {
         setShowWelcomeMessage(true);
-      } else if (!ordersAreLocked()) {
+      } else if (!ordersAreLocked() && !clubAlreadyOrdered) {
         setShowFoodReminder(true);
       }
     })();
@@ -3918,8 +3929,9 @@ export default function App() {
       localStorage.setItem("seenWelcomeMessage", "1");
     } catch {}
     setShowWelcomeMessage(false);
-    if (!ordersAreLocked()) setShowFoodReminder(true);
-  }, []);
+    const clubAlreadyOrdered = myClub ? !!orders[myClub] : false;
+    if (!ordersAreLocked() && !clubAlreadyOrdered) setShowFoodReminder(true);
+  }, [myClub, orders]);
 
   const logAction = useCallback((adminName, action) => {
     setAuditLog((prev) => {
@@ -3954,8 +3966,9 @@ export default function App() {
   // the same moment won't both post a duplicate.
   useEffect(() => {
     const checkScheduled = async () => {
-      const scheduled = computeScheduledAnnouncements(matches, lunchWindows, clubs);
       const now = new Date();
+      if (!isEventDay(now)) return; // never fire on any day other than the real event day
+      const scheduled = computeScheduledAnnouncements(matches, lunchWindows, clubs);
       const nowMin = now.getHours() * 60 + now.getMinutes();
       const due = scheduled.filter((s) => nowMin >= s.triggerMin);
       if (due.length === 0) return;
@@ -4097,7 +4110,7 @@ export default function App() {
 
       {showWelcomeMessage && screen !== "referee" && <WelcomeMessageModal onDismiss={dismissWelcomeMessage} />}
 
-      {showFoodReminder && screen !== "referee" && !showWelcomeMessage && (
+      {showFoodReminder && screen !== "referee" && !showWelcomeMessage && !(myClub && orders[myClub]) && (
         <FoodReminderModal
           onDismiss={() => setShowFoodReminder(false)}
           onOrderNow={() => {
