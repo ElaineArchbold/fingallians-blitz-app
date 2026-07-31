@@ -116,7 +116,7 @@ function findAdminByCode(code) {
   return match ? match[1] : null;
 }
 
-const REFEREE_SECRET = "blitzref2026";
+const REFEREE_SECRET = "ref22";
 
 const CLUB_PASSWORDS = {
   fing: "fing84",
