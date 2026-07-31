@@ -2289,7 +2289,7 @@ function generateGroupFixtures(teams) {
 
 function RefereeLinkCard({ adminName, logAction }) {
   const [copied, setCopied] = useState(false);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/?ref=${REFEREE_SECRET}` : "";
+  const link = `https://blitz.fingallians.fun/?ref=${REFEREE_SECRET}`;
 
   const copyLink = async () => {
     try {
