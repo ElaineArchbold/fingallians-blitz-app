@@ -766,8 +766,6 @@ function DayTimeline({ matches, lunchWindows, presentations }) {
 }
 
 function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, myClubObj, onChangeClub, onOpenWelcome, lunchWindows, presentations }) {
-  const next = matches.find((m) => m.status !== "finished");
-  const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   return (
     <div>
       <div style={{ background: `linear-gradient(135deg, ${HERO_BRIGHT}, ${HERO_DARK})`, color: C.line, padding: "20px 16px 22px" }}>
@@ -919,34 +917,6 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.ink }}>{a.text}</div>
             </div>
           ))}
-        </div>
-      )}
-
-      {next && (
-        <div style={{ padding: "12px 16px 0" }}>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1 }}>
-            Next up
-          </div>
-          <div
-            onClick={() => setScreen("fixtures")}
-            style={{
-              marginTop: 6,
-              background: "#fff",
-              border: `1px solid ${C.pitch}22`,
-              borderRadius: 12,
-              padding: 14,
-              cursor: "pointer",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{next.time}</span>
-                <PitchBadge pitch={next.pitch} />
-              </div>
-              <StatusPill status={next.status} />
-            </div>
-            <MatchRow match={next} teamById={teamById} />
-          </div>
         </div>
       )}
     </div>
@@ -1208,20 +1178,60 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen, myClubObj 
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   const groupMatches = matches.filter((m) => !m.finalLabel);
   const finals = matches.filter((m) => m.finalLabel);
-  const groups = {};
-  groupMatches.forEach((m) => {
-    groups[m.time] = groups[m.time] || [];
-    groups[m.time].push(m);
-  });
+
+  const upcomingGroupMatches = groupMatches.filter((m) => m.status !== "finished");
+  const finishedGroupMatches = groupMatches.filter((m) => m.status === "finished");
+
+  const groupByTime = (list) => {
+    const groups = {};
+    list.forEach((m) => {
+      groups[m.time] = groups[m.time] || [];
+      groups[m.time].push(m);
+    });
+    return groups;
+  };
+  const upcomingGroups = groupByTime(upcomingGroupMatches);
+  const finishedGroups = groupByTime(finishedGroupMatches);
+
+  const renderMatchCard = (m) => (
+    <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <PitchBadge pitch={m.pitch} />
+        <StatusPill status={m.status} />
+      </div>
+      <MatchRow match={m} teamById={teamById} />
+    </div>
+  );
+
   return (
     <div>
       <TopBar title="Fixtures" followedTeam={myClubObj} />
-      <ClubsShowcase clubs={clubs} setScreen={setScreen} />
       <SponsorStrip sponsors={sponsors} />
       <div style={{ padding: 16 }}>
         {matches.length === 0 && (
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
             Fixtures will appear here once the organiser adds them.
+          </div>
+        )}
+
+        {Object.keys(upcomingGroups).sort().map((time) => (
+          <div key={time} style={{ marginBottom: 16 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
+            {upcomingGroups[time].map(renderMatchCard)}
+          </div>
+        ))}
+
+        {finishedGroupMatches.length > 0 && (
+          <div style={{ marginTop: 8, marginBottom: 18 }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, paddingTop: 10, borderTop: `1px solid ${C.pitch}14` }}>
+              ✅ Results
+            </div>
+            {Object.keys(finishedGroups).sort().map((time) => (
+              <div key={time} style={{ marginBottom: 16 }}>
+                <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.inkSoft, marginBottom: 6 }}>{time}</div>
+                {finishedGroups[time].map(renderMatchCard)}
+              </div>
+            ))}
           </div>
         )}
 
@@ -1266,21 +1276,6 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen, myClubObj 
               ))}
           </div>
         )}
-
-        {Object.keys(groups).sort().map((time) => (
-          <div key={time} style={{ marginBottom: 16 }}>
-            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.pitch, marginBottom: 6 }}>{time}</div>
-            {groups[time].map((m) => (
-              <div key={m.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <PitchBadge pitch={m.pitch} />
-                  <StatusPill status={m.status} />
-                </div>
-                <MatchRow match={m} teamById={teamById} />
-              </div>
-            ))}
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -1506,7 +1501,6 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
       image: `/parking-map.jpg?v=${CREST_VERSION}`,
       body: "Limited car parking is available at Fingallians GAA, and buses are welcome to park on site. Overflow parking has been kindly provided by the HSE at Swords Business Campus, a short ten-minute walk from the grounds — stewards will be on duty at both locations to guide you.",
       maps: [
-        { label: "Open Fingallians GAA in Maps", url: "https://maps.google.com/?q=Fingallians+GAA+Swords" },
         { label: "Open overflow parking in Maps", url: "https://maps.google.com/?q=HSE+Swords+Business+Campus" },
       ],
     },
@@ -2967,6 +2961,26 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
 
       {tab === "sponsors" && (
         <div style={{ padding: 16 }}>
+          <div style={{ background: C.line, border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
+              🔄 Reset sponsor names
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
+              Renames all 6 sponsors to plain "Sponsor 1" through "Sponsor 6" — fixes any leftover "Gold/Silver/Supporter" names from before. Any logos or website links you've already added are kept untouched.
+            </div>
+            <button
+              onClick={() => {
+                const next = sponsors.map((s, i) => ({ ...s, name: `Sponsor ${i + 1}` }));
+                setSponsors(next);
+                persist("sponsors", next);
+                logAction(adminName, "Reset all sponsor names to plain Sponsor 1-6");
+              }}
+              style={{ width: "100%", background: "#fff", border: `1px dashed ${C.pitch}55`, borderRadius: 8, padding: 10, fontFamily: "Inter, sans-serif", color: C.pitch, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              Reset all names to Sponsor 1–6
+            </button>
+          </div>
+
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginBottom: 12, lineHeight: 1.5 }}>
             Paste a hosted image URL for each logo (e.g. from their website, or an image you've uploaded to Google Drive/Imgur with public sharing on). Leave it blank and the sponsor's name shows instead.
           </div>
