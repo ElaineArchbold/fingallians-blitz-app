@@ -21,6 +21,8 @@ input, select, textarea, button { box-sizing: border-box; max-width: 100%; }
 const HERO_BRIGHT = "#D61224";
 const HERO_DARK = "#750712";
 
+// The ?v= tag forces browsers/CDN to re-fetch when a crest/logo image is updated —
+// bump this number any time an image file changes, otherwise cached copies can stick around.
 const CREST_VERSION = "6";
 const BADGE_LOGO = `/logo.png?v=${CREST_VERSION}`;
 
@@ -35,6 +37,8 @@ const CRESTS = {
   brayemmets: `/crests/brayemmets.png?v=${CREST_VERSION}`,
 };
 
+
+/* ---------- Event constants ---------- */
 const EVENT = {
   name: "Fingallians U12 Hurling Blitz",
   date: "Saturday 22 August 2026",
@@ -70,6 +74,8 @@ const DEFAULT_CLUBS = [
   { id: "brayemmets", name: "Bray Emmets GAA", town: "Bray", county: "Wicklow", color: "#2F8F3E", contact: "" },
 ];
 
+// Each club fields an A and a B team — fixtures, results and the leaderboard all
+// operate on these 16 entries, while food ordering stays at the club (8) level.
 function buildTeamsFromClubs(clubs) {
   return clubs.flatMap((c) =>
     ["A", "B"].map((suffix) => ({
@@ -100,6 +106,8 @@ const DEFAULT_SPONSORS = [
   { id: "s6", name: "Sponsor 6", url: "", logo: "" },
 ];
 
+// Named organiser logins — all have identical full access (fixtures, scores, all food orders,
+// announcements, sponsors). Add/remove people here; swap out passwords whenever you like.
 const ADMIN_ACCOUNTS = {
   blitz2026: "Mentor",
   elaine1884: "Elaine",
@@ -116,8 +124,14 @@ function findAdminByCode(code) {
   return match ? match[1] : null;
 }
 
+// Referees get in via a secret link (e.g. blitz.fingallians.fun/?ref=blitzref2026)
+// rather than a visible button — there's no password gate on referee mode (just a
+// name, for accountability in the audit log), so this keeps it from being an open
+// door anyone browsing the app could stumble into. Change this any time if it leaks.
 const REFEREE_SECRET = "ref22";
 
+// Per-club password for editing that club's food order — pattern: 4-letter club code + 2-digit
+// founding year. Case-insensitive on entry (see checkPassword below).
 const CLUB_PASSWORDS = {
   fing: "fing84",
   finian: "fini83",
@@ -133,29 +147,37 @@ function checkPassword(input, expected) {
 }
 const MENTOR_BURGER_NOTE = "Every registered player and mentor gets a voucher on arrival for a burger at lunch, plus a tea/coffee voucher for mentors — nothing to order there. This form is so organisers can plan catering numbers: confirm your headcount and add any breakfast sausage rolls you'd like from the BBQ. Please submit by 19 August.";
 
+// TEMPORARY placeholder price — update once the real price per sausage bap is confirmed.
 const SAUSAGE_BAP_PRICE = 2;
 
+// TENTATIVE — confirm the real cutoff date. Orders lock at the end of this day.
 const ORDER_LOCK_DATE = new Date("2026-08-19T23:59:59");
 function ordersAreLocked() {
   return new Date() > ORDER_LOCK_DATE;
 }
 
+/* ---------- Storage helpers (Turso via /api/kv) ---------- */
 const API_BASE = "/api/kv";
 
 async function loadShared(key, fallback) {
   try {
     const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`);
     if (res.status === 404) {
+      // Genuinely doesn't exist yet in the database — safe to seed the default.
       await saveShared(key, fallback);
       return fallback;
     }
     if (!res.ok) {
+      // Some other failure (500, rate limit, cold-start hiccup after a deploy, etc).
+      // Do NOT overwrite whatever's actually stored — just use the fallback for
+      // this one load so the app still renders something.
       console.error("loadShared: non-OK response, not overwriting stored data", key, res.status);
       return fallback;
     }
     const data = await res.json();
     return JSON.parse(data.value);
   } catch (e) {
+    // Network error / fetch threw entirely — same reasoning, don't touch storage.
     console.error("loadShared: request failed, not overwriting stored data", key, e);
     return fallback;
   }
@@ -180,6 +202,7 @@ async function saveShared(key, value) {
   }
 }
 
+/* ---------- Score helpers ---------- */
 function scoreTotal(goals, points) {
   return goals * 3 + points;
 }
@@ -187,6 +210,7 @@ function scoreLabel(goals, points) {
   return `${goals}-${String(points).padStart(2, "0")}`;
 }
 
+/* ---------- Scoreboard flip component (signature element) ---------- */
 function Scoreline({ goals, points, big }) {
   return (
     <div style={{ display: "flex", gap: 3 }}>
@@ -359,6 +383,7 @@ function StatusPill({ status }) {
   );
 }
 
+/* ---------- Bottom nav ---------- */
 function BottomNav({ screen, setScreen }) {
   const items = [
     { key: "today", label: "Home", icon: Home },
@@ -411,6 +436,7 @@ function BottomNav({ screen, setScreen }) {
   );
 }
 
+/* ---------- Header ---------- */
 function TopBar({ title, onBack, right, followedTeam }) {
   return (
     <div
@@ -670,7 +696,70 @@ function WelcomeScreen({ clubs, onChoose, onClose, myClubName }) {
   );
 }
 
-function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, myClubObj, onChangeClub, onOpenWelcome, lunchWindows }) {
+function DayTimeline({ matches, lunchWindows, presentations }) {
+  const groupMatches = matches.filter((m) => !m.finalLabel);
+  const finals = matches.filter((m) => m.finalLabel && m.finalLabel !== "Presentations");
+  const hasLunch = Array.isArray(lunchWindows) && lunchWindows.length > 0;
+  const lastGroupTime = groupMatches.length > 0 ? groupMatches.map((m) => m.time).sort().slice(-1)[0] : null;
+  const cupFinal = finals.find((f) => f.finalLabel?.includes("Cup"));
+  const shieldFinal = finals.find((f) => f.finalLabel?.includes("Shield"));
+
+  const steps = [
+    { time: EVENT.registration, label: "Registration & team photos" },
+    { time: EVENT.procession, label: "Opening procession" },
+    {
+      time: EVENT.firstThrowIn,
+      label: hasLunch ? `Matches begin — first round, through ${lunchWindows[0].from}` : "Matches begin",
+    },
+    hasLunch && {
+      time: lunchWindows[0].from,
+      label: `Lunch begins — matches continue on remaining pitches, through ${lunchWindows[lunchWindows.length - 1].to}`,
+    },
+    lastGroupTime && {
+      time: lastGroupTime,
+      label: "Final group matches — finalists confirmed shortly after",
+    },
+    cupFinal && { time: cupFinal.time, label: "🏆 Cup Finals" },
+    shieldFinal && { time: shieldFinal.time, label: "🛡️ Shield Finals" },
+    presentations && {
+      time: presentations.from,
+      label: `Presentations & close — all done by ${presentations.to}`,
+    },
+  ].filter(Boolean);
+
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 14, padding: "14px 16px" }}>
+      {steps.map((s, i) => (
+        <div key={i} style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: i === steps.length - 1 ? C.sliotar : C.pitch,
+                marginTop: 4,
+                flexShrink: 0,
+              }}
+            />
+            {i < steps.length - 1 && <div style={{ width: 2, flex: 1, background: `${C.pitch}22`, minHeight: 24 }} />}
+          </div>
+          <div style={{ paddingBottom: i < steps.length - 1 ? 14 : 0 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 13.5, color: C.pitch }}>{s.time}</div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink, marginTop: 1, lineHeight: 1.4 }}>{s.label}</div>
+          </div>
+        </div>
+      ))}
+      {!hasLunch && (
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginTop: 8, fontStyle: "italic" }}>
+          The rest of the day's timing will appear here once the schedule is generated.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen, setSelectedTeam, myClubName, myClubObj, onChangeClub, onOpenWelcome, lunchWindows, presentations }) {
   const next = matches.find((m) => m.status !== "finished");
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
   return (
@@ -765,7 +854,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
               ["Registration", EVENT.registration],
               ["Procession", EVENT.procession],
               ["Throw-in", EVENT.firstThrowIn],
-              ["Finish", EVENT.targetFinish],
+              ["Finish", presentations?.to ? `~${presentations.to}` : EVENT.targetFinish],
             ].map(([label, time]) => (
               <div key={label} style={{ textAlign: "center", flex: 1 }}>
                 <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff" }}>{time}</div>
@@ -779,7 +868,7 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
                 {lunchWindows[0].from} – {lunchWindows[lunchWindows.length - 1].to}
               </div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>
-                Lunch — staggered in pairs, 2 clubs at a time (check the Team tab for your exact time)
+                Lunch — 2 sittings, 4 clubs at a time (check the Team tab for your exact time)
               </div>
             </div>
           )}
@@ -790,6 +879,13 @@ function TodayScreen({ teams, clubs, matches, announcements, sponsors, setScreen
       </div>
 
       <SponsorStrip sponsors={sponsors} />
+
+      <div style={{ padding: "16px 16px 4px" }}>
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 10 }}>
+          Plan for the Day
+        </div>
+        <DayTimeline matches={matches} lunchWindows={lunchWindows} presentations={presentations} />
+      </div>
 
       <div style={{ padding: "14px 16px 4px" }}>
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
@@ -857,6 +953,19 @@ function finalIcon(label) {
 }
 
 function MatchRow({ match, teamById }) {
+  if (match.finalLabel === "Presentations") {
+    return (
+      <div style={{ textAlign: "center", padding: "8px 0" }}>
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 16, color: C.sliotar, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          🏆 Presentations
+        </div>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginTop: 2 }}>
+          Trophies and medals — day officially wraps up here
+        </div>
+      </div>
+    );
+  }
+
   const aBlank = !match.teamA;
   const bBlank = !match.teamB;
 
@@ -1134,14 +1243,16 @@ function FixturesScreen({ teams, clubs, matches, sponsors, setScreen, myClubObj 
               .map(([time, ms]) => (
                 <div key={time}>
                   <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: "#fff", opacity: 0.85, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                    {time} — {ms[0].finalLabel?.includes("Shield") ? "🛡️ Shield Finals" : "🏆 Cup Finals"}
+                    {time} — {ms[0].finalLabel === "Presentations" ? "🏆 Presentations" : ms[0].finalLabel?.includes("Shield") ? "🛡️ Shield Finals" : "🏆 Cup Finals"}
                   </div>
                   {ms.map((m) => (
                     <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: 12, marginBottom: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <PitchBadge pitch={m.pitch} />
-                        <StatusPill status={m.status} />
-                      </div>
+                      {m.finalLabel !== "Presentations" && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                          <PitchBadge pitch={m.pitch} />
+                          <StatusPill status={m.status} />
+                        </div>
+                      )}
                       <MatchRow match={m} teamById={teamById} />
                     </div>
                   ))}
@@ -1174,7 +1285,7 @@ function computeStandings(teams, matches) {
   teams.forEach((t) => {
     table[t.id] = { id: t.id, name: t.name, played: 0, won: 0, drawn: 0, lost: 0, points: 0 };
   });
-  const headToHead = {};
+  const headToHead = {}; // key `${a}-${b}` -> winner id
   matches.filter((m) => m.status === "finished").forEach((m) => {
     const ta = table[m.teamA];
     const tb = table[m.teamB];
@@ -1206,6 +1317,10 @@ function computeStandings(teams, matches) {
 }
 
 function computeGroups(teams, matches) {
+  // Two teams are in the same group if they've been drawn against each other in
+  // the group stage — connected components of that "has played" graph = the groups.
+  // This is derived from the fixtures themselves, so it stays correct even if an
+  // admin edits fixtures by hand rather than using the auto-generator.
   const groupMatches = matches.filter((m) => !m.finalLabel && m.teamA && m.teamB);
   const parent = {};
   teams.forEach((t) => {
@@ -1230,14 +1345,18 @@ function computeGroups(teams, matches) {
   return Object.values(buckets).filter((g) => g.length > 1);
 }
 
+// A group of 4 is "complete" once all 6 of its round-robin matches are finished.
 function groupIsComplete(groupTeams, matches) {
   const ids = groupTeams.map((t) => t.id);
   const groupMatches = matches.filter((m) => !m.finalLabel && ids.includes(m.teamA) && ids.includes(m.teamB));
-  const expected = (groupTeams.length * (groupTeams.length - 1)) / 2;
+  const expected = (groupTeams.length * (groupTeams.length - 1)) / 2; // 6 for a group of 4
   if (groupMatches.length < expected) return false;
   return groupMatches.every((m) => m.status === "finished");
 }
 
+// Once BOTH of a grade's groups are complete, returns the two group winners
+// (→ Cup Final) and two runners-up (→ Shield Final). Returns null if either
+// group still has results outstanding.
 function qualifiersForGrade(teams, matches, grade) {
   const groupedTeams = computeGroups(teams, matches).filter((g) => g[0].id.endsWith(grade));
   if (groupedTeams.length < 2) return null;
@@ -1251,6 +1370,9 @@ function qualifiersForGrade(teams, matches, grade) {
   };
 }
 
+// Fills in teamA/teamB for any of the 4 finals that are still blank and whose
+// qualifiers are now determinable — never overwrites a final that's already set
+// (whether auto-filled earlier or picked manually), so nothing gets clobbered.
 function autoFillFinals(matchesList, teams) {
   const qualA = qualifiersForGrade(teams, matchesList, "A");
   const qualB = qualifiersForGrade(teams, matchesList, "B");
@@ -1585,6 +1707,7 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
   );
 }
 
+/* ---------- Food ordering (coach view) ---------- */
 function Stepper({ label, value, onChange, sub, disabled, onLockedTap }) {
   const handleChange = (v) => {
     if (disabled) {
@@ -1688,7 +1811,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
     );
   }
 
-  if (!clubId) return null;
+  if (!clubId) return null; // embedded with no club yet — parent handles the prompt
 
   const team = clubs.find((t) => t.id === clubId);
 
@@ -1899,7 +2022,6 @@ function computeTeamGaps(teamId, matches) {
     const m = Math.round(mins % 60);
     return `${h}:${String(m).padStart(2, "0")}`;
   };
-  const MATCH_DURATION_MIN = 23;
   const myTimes = matches
     .filter((m) => (m.teamA === teamId || m.teamB === teamId) && !m.finalLabel)
     .map((m) => timeToMin(m.time))
@@ -2080,6 +2202,7 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
   );
 }
 
+/* ---------- Fixture generator: A teams and B teams grouped separately, 3 pitches, plus finals ---------- */
 const PITCHES = ["Pitch 1", "Pitch 2", "Pitch 3"];
 const SLOT_MINUTES = 25;
 const START_HOUR = 10;
@@ -2108,9 +2231,11 @@ function shuffle(arr) {
   return a;
 }
 
-const LUNCH_MINUTES = 25; // the real physical floor — one full match slot
+const LUNCH_MINUTES = 25;
+const MATCH_DURATION_MIN = 23; // 20 min play + 3 min half-time, per the playing rules
+const PRESENTATION_MINUTES = 15; // buffer for trophies/presentations after the last final
 const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
-const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES;
+const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; // the bit that doesn't fit a whole slot
 
 // Fills pitches for consecutive slots from the given pool, respecting the absolute
 // rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
@@ -2174,15 +2299,16 @@ function generateGroupFixtures(teams) {
   // Group by CLUB, not by grade — a club's A and B teams always land in the
   // same club-group, so they always share the same lunch window.
   const clubIds = [...new Set(teams.map((t) => t.clubId))];
-  const shuffledClubs = shuffle(clubIds);
-  const clubGroup1 = shuffledClubs.slice(0, 4);
-  const clubGroup2 = shuffledClubs.slice(4, 8);
+  // Fixed order (not shuffled) — this specific grouping was chosen deliberately:
+  // Lunch 1: Fingallians, St Finian's, Rathvilly | Lunch 2: Knockbridge, Naomh Eoin,
+  // Navan O'Mahony's | Lunch 3: Ratoath, Bray Emmets.
+  const clubGroup1 = clubIds.slice(0, 4);
+  const clubGroup2 = clubIds.slice(4, 8);
 
   const teamsFor = (clubList, grade) => teams.filter((t) => clubList.includes(t.clubId) && t.id.endsWith(grade));
 
   // "Group 1" is the same 4 clubs whether you're looking at their A team or B team —
-  // this is the actual COMPETITION grouping (feeds the Cup/Shield finals) AND the
-  // same 4 clubs share their lunch sitting together.
+  // this is the actual COMPETITION grouping (feeds the Cup/Shield finals).
   const groupsA = [teamsFor(clubGroup1, "A"), teamsFor(clubGroup2, "A")];
   const groupsB = [teamsFor(clubGroup1, "B"), teamsFor(clubGroup2, "B")];
 
@@ -2203,21 +2329,20 @@ function generateGroupFixtures(teams) {
   slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
   // Remaining pool: rounds 2 and 3 combined (16 matches) — deliberately NOT
-  // split, so the lunch phases below have enough slack to actually pack well.
+  // split, so the 2 lunch phases below have enough slack to actually
+  // pack well. Lunch is staggered across 4 phases of just 2 clubs (4 teams)
+  // resting at a time, instead of 4 clubs at once — keeps more pitches busy
+  // at any given moment. A match that can't be played yet (because it needs a
+  // team from the currently-resting pair) is left in the pool and picked up
+  // automatically in a later phase.
   let remainingPool = [
     ...toMatches(rrAg1[1]), ...toMatches(rrAg2[1]), ...toMatches(rrBg1[1]), ...toMatches(rrBg2[1]),
     ...toMatches(rrAg1[2]), ...toMatches(rrAg2[2]), ...toMatches(rrBg1[2]), ...toMatches(rrBg2[2]),
   ];
 
-  // 4 sittings of just 2 clubs each — the smallest, most private grouping.
-  // No forced delay here — lunch starts naturally as soon as warm-up finishes
-  // (typically ~11:15), which keeps the whole day comfortably clear of 3pm.
-  const lunchPairs = [
-    shuffledClubs.slice(0, 2),
-    shuffledClubs.slice(2, 4),
-    shuffledClubs.slice(4, 6),
-    shuffledClubs.slice(6, 8),
-  ];
+  // 4 clubs per sitting (2 sittings total) — matches the same 4-and-4 split
+  // used for the actual competition groups above.
+  const lunchPairs = [clubGroup1, clubGroup2];
   const lunchWindows = [];
   lunchPairs.forEach((pair) => {
     const excludeIds = new Set();
@@ -2264,7 +2389,8 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Cup Final",
   });
 
-  const shieldTime = minutesToLabel(START_HOUR * 60 + START_MIN + (slotIndex + 1) * SLOT_MINUTES + extraOffset.value);
+  const shieldMinutes = START_HOUR * 60 + START_MIN + (slotIndex + 1) * SLOT_MINUTES + extraOffset.value;
+  const shieldTime = minutesToLabel(shieldMinutes);
   fixtures.push({
     id: `final-ashield-${Date.now()}`,
     time: shieldTime,
@@ -2284,9 +2410,24 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Shield Final",
   });
 
-  return { fixtures, lunchWindows };
+  // Bake presentation time into the actual schedule, rather than just assuming
+  // it happens for free after the last whistle.
+  const presentationsFrom = minutesToLabel(shieldMinutes + MATCH_DURATION_MIN);
+  const presentationsTo = minutesToLabel(shieldMinutes + MATCH_DURATION_MIN + PRESENTATION_MINUTES);
+  fixtures.push({
+    id: `presentations-${Date.now()}`,
+    time: presentationsFrom,
+    pitch: "",
+    teamA: "", teamB: "",
+    goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
+    status: "scheduled",
+    finalLabel: "Presentations",
+  });
+
+  return { fixtures, lunchWindows, presentations: { from: presentationsFrom, to: presentationsTo } };
 }
 
+/* ---------- Admin ---------- */
 function RefereeLinkCard({ adminName, logAction }) {
   const [copied, setCopied] = useState(false);
   const link = `https://blitz.fingallians.fun/?ref=${REFEREE_SECRET}`;
@@ -2298,6 +2439,7 @@ function RefereeLinkCard({ adminName, logAction }) {
       logAction(adminName, "Copied the referee link");
       setTimeout(() => setCopied(false), 2000);
     } catch {
+      // Clipboard API unavailable (e.g. older browser) — fall back to a manual select.
       window.prompt("Copy this link:", link);
     }
   };
@@ -2347,7 +2489,7 @@ function RefereeLinkCard({ adminName, logAction }) {
   );
 }
 
-function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved, adminName, onLogout }) {
+function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved, adminName, onLogout, presentations, setPresentations }) {
   const [tab, setTab] = useState("orders");
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [newFixture, setNewFixture] = useState({ time: "", pitch: "", teamA: "", teamB: "" });
@@ -2365,6 +2507,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   );
 
   const updateMatch = async (id, patch) => {
+    // Pull the freshest copy from the server right before writing, so a second
+    // admin/referee saving a different match seconds ago doesn't get clobbered
+    // by this save re-writing the whole list from a stale local copy. Skip the
+    // fetch if WE just saved seconds ago — that fetch could itself race ahead
+    // of our own write and hand back stale data, wiping what we just did.
     const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
     const updatedList = latest.map((m) => (m.id === id ? { ...m, ...patch } : m));
     const next = autoFillFinals(updatedList, teams);
@@ -2374,6 +2521,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       else setSaveError(null);
     });
 
+    // If auto-fill just populated a final that was blank before, log it separately.
     next.forEach((m, i) => {
       const before = updatedList[i];
       if (before && before.finalLabel && !before.teamA && m.teamA) {
@@ -2531,7 +2679,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Splits the 8 clubs into two competition groups of 4 for the actual fixtures (each club's A and B teams stay together, so As only ever play As, Bs only ever play Bs). Lunch is separate and staggered in <b>4 pairs of just 2 clubs at a time</b> (~{LUNCH_MINUTES} min each) — a club's A and B teams always break together, and only 2 clubs ever rest at once so the other 3 pitches stay busy. No team is ever double-booked or back-to-back. Finishes with 4 finals on the main pitch: A Cup, B Cup, then A Shield, B Shield. All final-day teams left blank until group placings are known. This replaces any fixtures currently listed below.
+              Splits the 8 clubs into two groups of 4 — the same 4-and-4 split is used both for the actual competition fixtures (each club's A and B teams stay together, so As only ever play As, Bs only ever play Bs) and for lunch. Lunch runs in <b>2 sittings of 4 clubs each</b>, {LUNCH_MINUTES} minutes per sitting, starting naturally around 11:15 — a club's A and B teams always break together. No team is ever double-booked or back-to-back. Finishes with 4 finals on the main pitch: A Cup, B Cup, then A Shield, B Shield, plus a {PRESENTATION_MINUTES}-minute presentations slot straight after — this timing is deterministic and reliably finishes well ahead of 3pm. All final-day teams left blank until group placings are known. This replaces any fixtures currently listed below.
             </div>
             <button
               onClick={async () => {
@@ -2543,12 +2691,13 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                   if (!ok) return;
                 }
                 setSaveError(null);
-                const { fixtures, lunchWindows: newLunch } = generateGroupFixtures(teams);
+                const { fixtures, lunchWindows: newLunch, presentations: newPresentations } = generateGroupFixtures(teams);
                 setMatches(fixtures);
                 setLunchWindows(newLunch);
-                const [r1, r2] = await Promise.all([persist("matches", fixtures), persist("lunchWindows", newLunch)]);
-                if (!r1.ok || !r2.ok) {
-                  setSaveError(`Save to the database failed (${r1.error || r2.error}). The schedule is showing on THIS screen only and has NOT been saved — reloading or checking on another device will show the old data. Please try again, and if it keeps failing, this needs checking on the Vercel/Turso side.`);
+                setPresentations(newPresentations);
+                const [r1, r2, r3] = await Promise.all([persist("matches", fixtures), persist("lunchWindows", newLunch), persist("presentations", newPresentations)]);
+                if (!r1.ok || !r2.ok || !r3.ok) {
+                  setSaveError(`Save to the database failed (${r1.error || r2.error || r3.error}). The schedule is showing on THIS screen only and has NOT been saved — reloading or checking on another device will show the old data. Please try again, and if it keeps failing, this needs checking on the Vercel/Turso side.`);
                   return;
                 }
                 logAction(adminName, `Auto-generated the full schedule with fixed A/B lunch breaks (replaced ${matches.length} existing fixture${matches.length === 1 ? "" : "s"})`);
@@ -2680,6 +2829,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
           {matches.map((m) => {
             const a = teams.find((t) => t.id === m.teamA);
             const b = teams.find((t) => t.id === m.teamB);
+            // Work out which grade this fixture is restricted to, if any.
             const grade = m.finalLabel?.startsWith("A ") ? "A" : m.finalLabel?.startsWith("B ") ? "B" : m.teamA ? m.teamA.slice(-1) : m.teamB ? m.teamB.slice(-1) : null;
             const teamOptions = grade ? teams.filter((t) => t.id.endsWith(grade)) : teams;
             return (
@@ -2931,6 +3081,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 const typed = window.prompt('Type RESET to confirm:');
                 if (typed !== "RESET") return;
 
+                // Auto-download a safety backup before wiping anything.
                 const backup = { exportedAt: new Date().toISOString(), teams, matches, orders, announcements, sponsors, auditLog };
                 const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -2951,6 +3102,8 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 persist("announcements", DEFAULT_ANNOUNCEMENTS);
                 setLunchWindows([]);
                 persist("lunchWindows", []);
+                setPresentations(null);
+                persist("presentations", null);
                 logAction(adminName, "Reset all test data (fixtures, orders, announcements, lunch windows) to a clean slate");
               }}
               style={{ width: "100%", background: "#fff", border: `1.5px solid ${C.pitch}`, borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch, cursor: "pointer" }}
@@ -3324,6 +3477,7 @@ function playAnnouncementDing() {
       osc.stop(start + 0.75);
     });
   } catch {
+    // Web Audio unavailable or blocked — fail silently, the modal still shows.
   }
 }
 
@@ -3336,12 +3490,13 @@ export default function App() {
   const [announcements, setAnnouncements] = useState(DEFAULT_ANNOUNCEMENTS);
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
   const [auditLog, setAuditLog] = useState([]);
-  const [announcementModal, setAnnouncementModal] = useState(null);
+  const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [adminName, setAdminName] = useState("");
-  const [loginModalMode, setLoginModalMode] = useState(null);
+  const [loginModalMode, setLoginModalMode] = useState(null); // null | "mentor" | "referee"
   const [lunchWindows, setLunchWindows] = useState([]);
+  const [presentations, setPresentations] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
 
   const [myClub, setMyClub] = useState(() => {
@@ -3387,7 +3542,7 @@ export default function App() {
 
   const checkForNewAnnouncement = useCallback((list) => {
     if (!list || list.length === 0) return;
-    const newest = list[0];
+    const newest = list[0]; // announcements are unshifted, so index 0 is newest
     let seenId = null;
     try {
       seenId = localStorage.getItem("seenAnnouncementId");
@@ -3400,7 +3555,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [t, m, o, a, s, log, lunch] = await Promise.all([
+      const [t, m, o, a, s, log, lunch, pres] = await Promise.all([
         loadShared("teams", DEFAULT_TEAMS),
         loadShared("matches", DEFAULT_MATCHES),
         loadShared("orders", DEFAULT_ORDERS),
@@ -3408,6 +3563,7 @@ export default function App() {
         loadShared("sponsors", DEFAULT_SPONSORS),
         loadShared("auditLog", []),
         loadShared("lunchWindows", []),
+        loadShared("presentations", null),
       ]);
       setTeams(t);
       setMatches(m);
@@ -3415,7 +3571,8 @@ export default function App() {
       setAnnouncements(a);
       setSponsors(s);
       setAuditLog(log);
-      setLunchWindows(Array.isArray(lunch) ? lunch : []);
+      setLunchWindows(Array.isArray(lunch) ? lunch : []); // old data was an object, not an array — discard if so
+      setPresentations(pres && pres.from ? pres : null);
       setLoaded(true);
       checkForNewAnnouncement(a);
 
@@ -3427,6 +3584,8 @@ export default function App() {
     })();
   }, []);
 
+  // Poll for new announcements while the app stays open, so someone already
+  // using the app sees the modal+ding as soon as an organiser posts one.
   useEffect(() => {
     const interval = setInterval(async () => {
       const latest = await loadShared("announcements", DEFAULT_ANNOUNCEMENTS);
@@ -3436,6 +3595,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, [checkForNewAnnouncement]);
 
+  // Poll for fixture/score changes too, so with multiple people using the app
+  // at once (referees entering scores, mentors and parents watching), everyone's
+  // Fixtures/Standings/Team views stay current without needing a manual reload.
+  // Skips the update if we saved locally very recently, so this can never race
+  // ahead of our own save and wipe fixtures we just generated/edited.
   useEffect(() => {
     const interval = setInterval(async () => {
       const recentlySaved = Date.now() - (lastSaveTimeRef.current.matches || 0) < 15000;
@@ -3465,7 +3629,7 @@ export default function App() {
   const logAction = useCallback((adminName, action) => {
     setAuditLog((prev) => {
       const entry = { id: `log${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, time: new Date().toISOString(), admin: adminName, action };
-      const next = [entry, ...prev].slice(0, 300);
+      const next = [entry, ...prev].slice(0, 300); // keep the log from growing unbounded
       saveShared("auditLog", next);
       return next;
     });
@@ -3521,7 +3685,7 @@ export default function App() {
   }
 
   let body;
-  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} />;
+  if (screen === "today") body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} presentations={presentations} />;
   else if (screen === "teams") body = <TeamsScreen teams={teams} matches={matches} setScreen={setScreen} setSelectedTeam={setSelectedTeam} />;
   else if (screen === "teamDetail") body = <TeamDetailScreen teamId={selectedTeam} teams={teams} matches={matches} setScreen={setScreen} />;
   else if (screen === "fixtures") body = <FixturesScreen teams={teams} clubs={clubs} matches={matches} sponsors={sponsors} setScreen={setScreen} myClubObj={myClubObj} />;
@@ -3545,6 +3709,8 @@ export default function App() {
         logAction={logAction}
         lunchWindows={lunchWindows}
         setLunchWindows={setLunchWindows}
+        presentations={presentations}
+        setPresentations={setPresentations}
         wasRecentlySaved={wasRecentlySaved}
         adminName={adminName}
         onLogout={() => {
@@ -3557,8 +3723,10 @@ export default function App() {
     );
   else if (screen === "referee")
     body = <RefereeScreen teams={teams} matches={matches} setMatches={setMatches} persist={persist} logAction={logAction} wasRecentlySaved={wasRecentlySaved} />;
+  // If screen is somehow "admin" without being authed, body stays unset here and
+  // falls through to the safety-net default below — no state updates during render.
 
-  if (!body) body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} />;
+  if (!body) body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} presentations={presentations} />;
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.line, minHeight: "100dvh", display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif" }}>
@@ -3570,7 +3738,7 @@ export default function App() {
         try {
           existing = localStorage.getItem("refName");
         } catch {}
-        if (!existing) return null;
+        if (!existing) return null; // nothing to show in the footer at all until that happens
         return (
           <div style={{ textAlign: "center", padding: "8px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 20 }}>
             <button
