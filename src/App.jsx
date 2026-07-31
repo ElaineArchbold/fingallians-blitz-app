@@ -1562,9 +1562,22 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
         <div style={{ textAlign: "center", marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.pitch}14` }}>
           <button
             onClick={onMentorClick}
-            style={{ background: "none", border: "none", color: C.inkSoft, fontFamily: "Inter, sans-serif", fontSize: 11.5, cursor: "pointer", textDecoration: "underline" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#fff",
+              border: `1.5px solid ${C.pitch}44`,
+              borderRadius: 30,
+              padding: "10px 20px",
+              fontFamily: "Inter, sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              color: C.pitch,
+              cursor: "pointer",
+            }}
           >
-            Mentor sign-in
+            <UserCircle size={16} /> Mentor sign-in
           </button>
         </div>
       </div>
@@ -2274,6 +2287,66 @@ function generateGroupFixtures(teams) {
   return { fixtures, lunchWindows };
 }
 
+function RefereeLinkCard({ adminName, logAction }) {
+  const [copied, setCopied] = useState(false);
+  const link = typeof window !== "undefined" ? `${window.location.origin}/?ref=${REFEREE_SECRET}` : "";
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      logAction(adminName, "Copied the referee link");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this link:", link);
+    }
+  };
+
+  return (
+    <div style={{ background: "#fff", border: `2px solid ${C.pitch}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <Flag size={16} color={C.pitch} />
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink }}>Referee link</div>
+      </div>
+      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
+        Share this with your referees — it takes them straight to score entry, no password needed. Doesn't show up anywhere else in the app, so this is the only place to grab it.
+      </div>
+      <div
+        style={{
+          background: C.line,
+          border: `1px solid ${C.pitch}22`,
+          borderRadius: 8,
+          padding: "10px 12px",
+          fontFamily: "Inter, sans-serif",
+          fontSize: 12.5,
+          color: C.ink,
+          wordBreak: "break-all",
+          marginBottom: 10,
+        }}
+      >
+        {link}
+      </div>
+      <button
+        onClick={copyLink}
+        style={{
+          width: "100%",
+          background: copied ? C.sliotar : C.pitch,
+          color: copied ? C.ink : "#fff",
+          border: "none",
+          borderRadius: 8,
+          padding: 11,
+          fontFamily: "Inter, sans-serif",
+          fontWeight: 700,
+          fontSize: 13,
+          cursor: "pointer",
+        }}
+      >
+        {copied ? "✓ Copied!" : "Copy link"}
+      </button>
+    </div>
+  );
+}
+
 function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved, adminName, onLogout }) {
   const [tab, setTab] = useState("orders");
   const [newAnnouncement, setNewAnnouncement] = useState("");
@@ -2804,6 +2877,8 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
 
       {tab === "log" && (
         <div style={{ padding: 16 }}>
+          <RefereeLinkCard adminName={adminName} logAction={logAction} />
+
           <div style={{ background: C.line, border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
             <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
               💾 Download full backup
