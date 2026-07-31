@@ -714,6 +714,7 @@ function DayTimeline({ matches, lunchWindows, presentations }) {
     hasLunch && {
       time: lunchWindows[0].from,
       label: `Lunch begins — matches continue on remaining pitches, through ${lunchWindows[lunchWindows.length - 1].to}`,
+      note: "See your Team tab for your club's allocated lunch time — your burgers will be ready then.",
     },
     lastGroupTime && {
       time: lastGroupTime,
@@ -747,6 +748,11 @@ function DayTimeline({ matches, lunchWindows, presentations }) {
           <div style={{ paddingBottom: i < steps.length - 1 ? 14 : 0 }}>
             <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 13.5, color: C.pitch }}>{s.time}</div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink, marginTop: 1, lineHeight: 1.4 }}>{s.label}</div>
+            {s.note && (
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, marginTop: 3, lineHeight: 1.4, fontStyle: "italic" }}>
+                {s.note}
+              </div>
+            )}
           </div>
         </div>
       ))}
