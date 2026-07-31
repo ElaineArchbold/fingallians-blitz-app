@@ -1317,6 +1317,53 @@ function computeStandings(teams, matches) {
   return rows;
 }
 
+// Computes the set of auto-triggered announcements based on the actual schedule —
+// registration, one per lunch sitting (naming the clubs in it), and one ahead of
+// the finals. Recomputes fresh any time the schedule changes, so it always
+// reflects reality rather than a fixed guess. Each has a stable `id` so the
+// trigger effect can tell "already posted" from "not yet due".
+function computeScheduledAnnouncements(matches, lunchWindows, clubs) {
+  const list = [];
+  const clubName = (cid) => clubs.find((c) => c.id === cid)?.name || cid;
+  const timeToMin = (t) => {
+    const [h, m] = t.replace(/\s*[ap]\.?m\.?/i, "").trim().split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  const minToLabel = (mins) => `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, "0")}`;
+
+  // Registration — fires at the published registration time, no schedule needed.
+  list.push({
+    id: "sched-registration",
+    triggerMin: timeToMin(EVENT.registration),
+    text: "📢 Registration is now open! Head to the clubhouse to register your team, then over to the club ball wall for your team photo.",
+  });
+
+  // One per lunch sitting, naming the clubs in it — fires 10 minutes ahead so
+  // there's time to wrap up a match and walk over.
+  if (Array.isArray(lunchWindows)) {
+    lunchWindows.forEach((w, i) => {
+      const names = (w.clubs || []).map(clubName).join(", ");
+      list.push({
+        id: `sched-lunch-${i}`,
+        triggerMin: timeToMin(w.from) - 10,
+        text: `🍔 Burger break coming up at ${w.from} for: ${names}. Head to the BBQ area when your match finishes.`,
+      });
+    });
+  }
+
+  // Finals — fires 15 minutes ahead of the Cup Final kickoff.
+  const cupFinal = matches.find((m) => m.finalLabel === "A Cup Final");
+  if (cupFinal) {
+    list.push({
+      id: "sched-finals",
+      triggerMin: timeToMin(cupFinal.time) - 15,
+      text: `🏆 Finals are almost here! Make your way to the main pitch — Cup Finals kick off at ${cupFinal.time}.`,
+    });
+  }
+
+  return list.map((s) => ({ ...s, triggerLabel: minToLabel(Math.max(0, s.triggerMin)) }));
+}
+
 function computeGroups(teams, matches) {
   // Two teams are in the same group if they've been drawn against each other in
   // the group stage — connected components of that "has played" graph = the groups.
@@ -2484,6 +2531,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [newFixture, setNewFixture] = useState({ time: "", pitch: "", teamA: "", teamB: "" });
   const [saveError, setSaveError] = useState(null);
+  const [previewAnnouncement, setPreviewAnnouncement] = useState(null);
 
   const totals = clubs.reduce(
     (acc, t) => {
@@ -2909,6 +2957,35 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
 
       {tab === "announcements" && (
         <div style={{ padding: 16 }}>
+          <div style={{ background: C.line, border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 600, fontSize: 14, color: C.ink, marginBottom: 4 }}>
+              ⏰ Scheduled announcements
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
+              These post themselves automatically once their time arrives — registration, each lunch sitting, and a heads-up before the finals. Timing is worked out from the actual schedule, so it updates if you regenerate. Tap "Preview" to see exactly what will go out, without actually posting it.
+            </div>
+            {computeScheduledAnnouncements(matches, lunchWindows, clubs).map((s) => {
+              const alreadyPosted = announcements.some((a) => a.id === s.id);
+              return (
+                <div key={s.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 13, color: C.pitch }}>{s.triggerLabel}</span>
+                    <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: alreadyPosted ? C.pitch : C.inkSoft, textTransform: "uppercase" }}>
+                      {alreadyPosted ? "✓ Posted" : "Not yet due"}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink, lineHeight: 1.4, marginBottom: 8 }}>{s.text}</div>
+                  <button
+                    onClick={() => setPreviewAnnouncement(s)}
+                    style={{ background: "none", border: `1px solid ${C.pitch}33`, borderRadius: 20, padding: "5px 12px", fontFamily: "Inter, sans-serif", fontSize: 11.5, fontWeight: 700, color: C.pitch, cursor: "pointer" }}
+                  >
+                    Preview
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <input
               placeholder="New announcement"
@@ -3143,6 +3220,35 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               </div>
             );
           })}
+        </div>
+      )}
+
+      {previewAnnouncement && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(20,17,16,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={() => setPreviewAnnouncement(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 18, padding: "28px 24px", maxWidth: 340, width: "100%", textAlign: "center", border: `3px solid ${C.sliotar}`, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
+          >
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, color: C.pitch, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+              👁 Preview only — not posted
+            </div>
+            <div style={{ fontSize: 42, marginBottom: 10 }}>📢</div>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 12, color: C.pitch, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>
+              Announcement
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 16, color: C.ink, lineHeight: 1.5, marginBottom: 22 }}>
+              {previewAnnouncement.text}
+            </div>
+            <button
+              onClick={() => setPreviewAnnouncement(null)}
+              style={{ background: C.pitch, color: "#fff", border: "none", borderRadius: 30, padding: "12px 36px", fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            >
+              Close preview
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -3796,6 +3902,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // (Scheduled-announcement auto-posting effect moved below, after `clubs` is defined.)
+
   const dismissAnnouncementModal = useCallback(() => {
     if (announcementModal) {
       try {
@@ -3839,6 +3947,32 @@ export default function App() {
     });
     return Array.from(seen.values());
   }, [teams]);
+
+  // Auto-post scheduled announcements (registration, each lunch sitting, finals)
+  // once their trigger time arrives. Whichever open browser's check fires first
+  // posts it — checking the latest data first means two browsers checking around
+  // the same moment won't both post a duplicate.
+  useEffect(() => {
+    const checkScheduled = async () => {
+      const scheduled = computeScheduledAnnouncements(matches, lunchWindows, clubs);
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const due = scheduled.filter((s) => nowMin >= s.triggerMin);
+      if (due.length === 0) return;
+      const latest = await loadShared("announcements", DEFAULT_ANNOUNCEMENTS);
+      const existingIds = new Set(latest.map((a) => a.id));
+      const toAdd = due.filter((s) => !existingIds.has(s.id));
+      if (toAdd.length === 0) return;
+      const newEntries = toAdd.map((s) => ({ id: s.id, text: s.text, time: now.toTimeString().slice(0, 5) }));
+      const next = [...newEntries, ...latest];
+      setAnnouncements(next);
+      await saveShared("announcements", next);
+      checkForNewAnnouncement(next);
+    };
+    checkScheduled();
+    const interval = setInterval(checkScheduled, 30000);
+    return () => clearInterval(interval);
+  }, [matches, lunchWindows, clubs, checkForNewAnnouncement]);
 
   const lastSaveTimeRef = useRef({});
   const persist = useCallback((key, value) => {
