@@ -21,8 +21,6 @@ input, select, textarea, button { box-sizing: border-box; max-width: 100%; }
 const HERO_BRIGHT = "#D61224";
 const HERO_DARK = "#750712";
 
-// The ?v= tag forces browsers/CDN to re-fetch when a crest/logo image is updated —
-// bump this number any time an image file changes, otherwise cached copies can stick around.
 const CREST_VERSION = "6";
 const BADGE_LOGO = `/logo.png?v=${CREST_VERSION}`;
 
@@ -37,8 +35,6 @@ const CRESTS = {
   brayemmets: `/crests/brayemmets.png?v=${CREST_VERSION}`,
 };
 
-
-/* ---------- Event constants ---------- */
 const EVENT = {
   name: "Fingallians U12 Hurling Blitz",
   date: "Saturday 22 August 2026",
@@ -74,8 +70,6 @@ const DEFAULT_CLUBS = [
   { id: "brayemmets", name: "Bray Emmets GAA", town: "Bray", county: "Wicklow", color: "#2F8F3E", contact: "" },
 ];
 
-// Each club fields an A and a B team — fixtures, results and the leaderboard all
-// operate on these 16 entries, while food ordering stays at the club (8) level.
 function buildTeamsFromClubs(clubs) {
   return clubs.flatMap((c) =>
     ["A", "B"].map((suffix) => ({
@@ -106,8 +100,6 @@ const DEFAULT_SPONSORS = [
   { id: "s6", name: "Sponsor 6", url: "", logo: "" },
 ];
 
-// Named organiser logins — all have identical full access (fixtures, scores, all food orders,
-// announcements, sponsors). Add/remove people here; swap out passwords whenever you like.
 const ADMIN_ACCOUNTS = {
   blitz2026: "Mentor",
   elaine1884: "Elaine",
@@ -124,14 +116,8 @@ function findAdminByCode(code) {
   return match ? match[1] : null;
 }
 
-// Referees get in via a secret link (e.g. blitz.fingallians.fun/?ref=blitzref2026)
-// rather than a visible button — there's no password gate on referee mode (just a
-// name, for accountability in the audit log), so this keeps it from being an open
-// door anyone browsing the app could stumble into. Change this any time if it leaks.
 const REFEREE_SECRET = "blitzref2026";
 
-// Per-club password for editing that club's food order — pattern: 4-letter club code + 2-digit
-// founding year. Case-insensitive on entry (see checkPassword below).
 const CLUB_PASSWORDS = {
   fing: "fing84",
   finian: "fini83",
@@ -147,37 +133,29 @@ function checkPassword(input, expected) {
 }
 const MENTOR_BURGER_NOTE = "Every registered player and mentor gets a voucher on arrival for a burger at lunch, plus a tea/coffee voucher for mentors — nothing to order there. This form is so organisers can plan catering numbers: confirm your headcount and add any breakfast sausage rolls you'd like from the BBQ. Please submit by 19 August.";
 
-// TEMPORARY placeholder price — update once the real price per sausage bap is confirmed.
 const SAUSAGE_BAP_PRICE = 2;
 
-// TENTATIVE — confirm the real cutoff date. Orders lock at the end of this day.
 const ORDER_LOCK_DATE = new Date("2026-08-19T23:59:59");
 function ordersAreLocked() {
   return new Date() > ORDER_LOCK_DATE;
 }
 
-/* ---------- Storage helpers (Turso via /api/kv) ---------- */
 const API_BASE = "/api/kv";
 
 async function loadShared(key, fallback) {
   try {
     const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`);
     if (res.status === 404) {
-      // Genuinely doesn't exist yet in the database — safe to seed the default.
       await saveShared(key, fallback);
       return fallback;
     }
     if (!res.ok) {
-      // Some other failure (500, rate limit, cold-start hiccup after a deploy, etc).
-      // Do NOT overwrite whatever's actually stored — just use the fallback for
-      // this one load so the app still renders something.
       console.error("loadShared: non-OK response, not overwriting stored data", key, res.status);
       return fallback;
     }
     const data = await res.json();
     return JSON.parse(data.value);
   } catch (e) {
-    // Network error / fetch threw entirely — same reasoning, don't touch storage.
     console.error("loadShared: request failed, not overwriting stored data", key, e);
     return fallback;
   }
@@ -202,7 +180,6 @@ async function saveShared(key, value) {
   }
 }
 
-/* ---------- Score helpers ---------- */
 function scoreTotal(goals, points) {
   return goals * 3 + points;
 }
@@ -210,7 +187,6 @@ function scoreLabel(goals, points) {
   return `${goals}-${String(points).padStart(2, "0")}`;
 }
 
-/* ---------- Scoreboard flip component (signature element) ---------- */
 function Scoreline({ goals, points, big }) {
   return (
     <div style={{ display: "flex", gap: 3 }}>
@@ -383,7 +359,6 @@ function StatusPill({ status }) {
   );
 }
 
-/* ---------- Bottom nav ---------- */
 function BottomNav({ screen, setScreen }) {
   const items = [
     { key: "today", label: "Home", icon: Home },
@@ -436,7 +411,6 @@ function BottomNav({ screen, setScreen }) {
   );
 }
 
-/* ---------- Header ---------- */
 function TopBar({ title, onBack, right, followedTeam }) {
   return (
     <div
@@ -1200,7 +1174,7 @@ function computeStandings(teams, matches) {
   teams.forEach((t) => {
     table[t.id] = { id: t.id, name: t.name, played: 0, won: 0, drawn: 0, lost: 0, points: 0 };
   });
-  const headToHead = {}; // key `${a}-${b}` -> winner id
+  const headToHead = {};
   matches.filter((m) => m.status === "finished").forEach((m) => {
     const ta = table[m.teamA];
     const tb = table[m.teamB];
@@ -1232,10 +1206,6 @@ function computeStandings(teams, matches) {
 }
 
 function computeGroups(teams, matches) {
-  // Two teams are in the same group if they've been drawn against each other in
-  // the group stage — connected components of that "has played" graph = the groups.
-  // This is derived from the fixtures themselves, so it stays correct even if an
-  // admin edits fixtures by hand rather than using the auto-generator.
   const groupMatches = matches.filter((m) => !m.finalLabel && m.teamA && m.teamB);
   const parent = {};
   teams.forEach((t) => {
@@ -1260,18 +1230,14 @@ function computeGroups(teams, matches) {
   return Object.values(buckets).filter((g) => g.length > 1);
 }
 
-// A group of 4 is "complete" once all 6 of its round-robin matches are finished.
 function groupIsComplete(groupTeams, matches) {
   const ids = groupTeams.map((t) => t.id);
   const groupMatches = matches.filter((m) => !m.finalLabel && ids.includes(m.teamA) && ids.includes(m.teamB));
-  const expected = (groupTeams.length * (groupTeams.length - 1)) / 2; // 6 for a group of 4
+  const expected = (groupTeams.length * (groupTeams.length - 1)) / 2;
   if (groupMatches.length < expected) return false;
   return groupMatches.every((m) => m.status === "finished");
 }
 
-// Once BOTH of a grade's groups are complete, returns the two group winners
-// (→ Cup Final) and two runners-up (→ Shield Final). Returns null if either
-// group still has results outstanding.
 function qualifiersForGrade(teams, matches, grade) {
   const groupedTeams = computeGroups(teams, matches).filter((g) => g[0].id.endsWith(grade));
   if (groupedTeams.length < 2) return null;
@@ -1285,9 +1251,6 @@ function qualifiersForGrade(teams, matches, grade) {
   };
 }
 
-// Fills in teamA/teamB for any of the 4 finals that are still blank and whose
-// qualifiers are now determinable — never overwrites a final that's already set
-// (whether auto-filled earlier or picked manually), so nothing gets clobbered.
 function autoFillFinals(matchesList, teams) {
   const qualA = qualifiersForGrade(teams, matchesList, "A");
   const qualB = qualifiersForGrade(teams, matchesList, "B");
@@ -1609,7 +1572,6 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
   );
 }
 
-/* ---------- Food ordering (coach view) ---------- */
 function Stepper({ label, value, onChange, sub, disabled, onLockedTap }) {
   const handleChange = (v) => {
     if (disabled) {
@@ -1713,7 +1675,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
     );
   }
 
-  if (!clubId) return null; // embedded with no club yet — parent handles the prompt
+  if (!clubId) return null;
 
   const team = clubs.find((t) => t.id === clubId);
 
@@ -1924,7 +1886,7 @@ function computeTeamGaps(teamId, matches) {
     const m = Math.round(mins % 60);
     return `${h}:${String(m).padStart(2, "0")}`;
   };
-  const MATCH_DURATION_MIN = 23; // 20 min play + 3 min half-time, per the playing rules
+  const MATCH_DURATION_MIN = 23;
   const myTimes = matches
     .filter((m) => (m.teamA === teamId || m.teamB === teamId) && !m.finalLabel)
     .map((m) => timeToMin(m.time))
@@ -2105,14 +2067,11 @@ function TeamScreen({ teams, clubs, matches, orders, saveOrder, sponsors, myClub
   );
 }
 
-/* ---------- Fixture generator: A teams and B teams grouped separately, 3 pitches, plus finals ---------- */
 const PITCHES = ["Pitch 1", "Pitch 2", "Pitch 3"];
 const SLOT_MINUTES = 25;
 const START_HOUR = 10;
 const START_MIN = 0;
 
-// Round-robin for a group of 4 via the circle method: 3 rounds, each with 2 matches
-// that between them use all 4 teams (so they can run in parallel on different pitches).
 const roundRobin4 = (g) => [
   [[g[0], g[1]], [g[2], g[3]]],
   [[g[0], g[2]], [g[1], g[3]]],
@@ -2136,12 +2095,8 @@ function shuffle(arr) {
 
 const LUNCH_MINUTES = 40;
 const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
-const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; // the bit that doesn't fit a whole slot
+const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES;
 
-// Fills pitches for consecutive slots from the given pool, respecting the absolute
-// rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
-// pool empties sooner, so a lunch block can be padded to a real fixed duration.
-// Mutates `pool` and `lastPlayedSlot`; returns the next free slot index.
 function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null, extraOffsetRef = null) {
   let slotIndex = startSlot;
   let slotsUsed = 0;
@@ -2184,12 +2139,8 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
     slotsUsed++;
 
     if (excludeTeamIds) {
-      // Exclusion phase (a lunch window): run for exactly minSlots and stop.
-      // Whatever's left in the pool is deliberately deferred to a later phase —
-      // it is NOT this phase's job to finish, so don't keep looping over it.
       if (slotsUsed >= minSlots) break;
     } else {
-      // Normal phase (no exclusions): finish once the pool is actually empty.
       if (pool.length === 0 && slotsUsed >= minSlots) break;
     }
   }
@@ -2197,8 +2148,6 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
 }
 
 function generateGroupFixtures(teams) {
-  // Group by CLUB, not by grade — a club's A and B teams always land in the
-  // same club-group, so they always share the same lunch window.
   const clubIds = [...new Set(teams.map((t) => t.clubId))];
   const shuffledClubs = shuffle(clubIds);
   const clubGroup1 = shuffledClubs.slice(0, 4);
@@ -2206,8 +2155,6 @@ function generateGroupFixtures(teams) {
 
   const teamsFor = (clubList, grade) => teams.filter((t) => clubList.includes(t.clubId) && t.id.endsWith(grade));
 
-  // "Group 1" is the same 4 clubs whether you're looking at their A team or B team —
-  // this is the actual COMPETITION grouping (feeds the Cup/Shield finals).
   const groupsA = [teamsFor(clubGroup1, "A"), teamsFor(clubGroup2, "A")];
   const groupsB = [teamsFor(clubGroup1, "B"), teamsFor(clubGroup2, "B")];
 
@@ -2222,18 +2169,9 @@ function generateGroupFixtures(teams) {
   let slotIndex = 0;
   const extraOffset = { value: 0 };
 
-  // Warm-up: everyone's first round only (8 matches) — just enough that nobody
-  // breaks for lunch before playing at least once.
   const round1All = [...toMatches(rrAg1[0]), ...toMatches(rrAg2[0]), ...toMatches(rrBg1[0]), ...toMatches(rrBg2[0])];
   slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
-  // Remaining pool: rounds 2 and 3 combined (16 matches) — deliberately NOT
-  // split, so the 4 staggered lunch phases below have enough slack to actually
-  // pack well. Lunch is staggered across 4 phases of just 2 clubs (4 teams)
-  // resting at a time, instead of 4 clubs at once — keeps more pitches busy
-  // at any given moment. A match that can't be played yet (because it needs a
-  // team from the currently-resting pair) is left in the pool and picked up
-  // automatically in a later phase.
   let remainingPool = [
     ...toMatches(rrAg1[1]), ...toMatches(rrAg2[1]), ...toMatches(rrBg1[1]), ...toMatches(rrBg2[1]),
     ...toMatches(rrAg1[2]), ...toMatches(rrAg2[2]), ...toMatches(rrBg1[2]), ...toMatches(rrBg2[2]),
@@ -2254,9 +2192,6 @@ function generateGroupFixtures(teams) {
     const phaseStart = slotIndex;
     const fromLabel = minutesToLabel(START_HOUR * 60 + START_MIN + phaseStart * SLOT_MINUTES + extraOffset.value);
     slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds, extraOffset);
-    // Add whatever's left of the requested lunch length that doesn't fit a
-    // whole match slot — a genuine arbitrary-length break, not just a rounded
-    // multiple of 25 minutes.
     extraOffset.value += LUNCH_REMAINDER_MINUTES;
     lunchWindows.push({
       from: fromLabel,
@@ -2265,11 +2200,8 @@ function generateGroupFixtures(teams) {
     });
   });
 
-  // Mop-up: anything still unplayed (shouldn't normally be much, if anything —
-  // safety net in case a match's teams were still excluded right to the end).
   slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
-  // Finals — teams left blank until group placings are known.
   const cupTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value);
   fixtures.push({
     id: `final-acup-${Date.now()}`,
@@ -2313,7 +2245,6 @@ function generateGroupFixtures(teams) {
   return { fixtures, lunchWindows };
 }
 
-/* ---------- Admin ---------- */
 function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements, setAnnouncements, sponsors, setSponsors, persist, auditLog, logAction, lunchWindows, setLunchWindows, wasRecentlySaved, adminName, onLogout }) {
   const [tab, setTab] = useState("orders");
   const [newAnnouncement, setNewAnnouncement] = useState("");
@@ -2332,11 +2263,6 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   );
 
   const updateMatch = async (id, patch) => {
-    // Pull the freshest copy from the server right before writing, so a second
-    // admin/referee saving a different match seconds ago doesn't get clobbered
-    // by this save re-writing the whole list from a stale local copy. Skip the
-    // fetch if WE just saved seconds ago — that fetch could itself race ahead
-    // of our own write and hand back stale data, wiping what we just did.
     const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
     const updatedList = latest.map((m) => (m.id === id ? { ...m, ...patch } : m));
     const next = autoFillFinals(updatedList, teams);
@@ -2346,7 +2272,6 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       else setSaveError(null);
     });
 
-    // If auto-fill just populated a final that was blank before, log it separately.
     next.forEach((m, i) => {
       const before = updatedList[i];
       if (before && before.finalLabel && !before.teamA && m.teamA) {
@@ -2653,7 +2578,6 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
           {matches.map((m) => {
             const a = teams.find((t) => t.id === m.teamA);
             const b = teams.find((t) => t.id === m.teamB);
-            // Work out which grade this fixture is restricted to, if any.
             const grade = m.finalLabel?.startsWith("A ") ? "A" : m.finalLabel?.startsWith("B ") ? "B" : m.teamA ? m.teamA.slice(-1) : m.teamB ? m.teamB.slice(-1) : null;
             const teamOptions = grade ? teams.filter((t) => t.id.endsWith(grade)) : teams;
             return (
@@ -2680,57 +2604,61 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                     <X size={16} />
                   </button>
                 </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-                  <select
-                    value={m.teamA}
-                    onChange={(e) => updateMatch(m.id, { teamA: e.target.value })}
-                    style={{ flex: 1, minWidth: 0, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
-                  >
-                    <option value="">TBC…</option>
-                    {teamOptions.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>v</span>
-                  <select
-                    value={m.teamB}
-                    onChange={(e) => updateMatch(m.id, { teamB: e.target.value })}
-                    style={{ flex: 1, minWidth: 0, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
-                  >
-                    <option value="">TBC…</option>
-                    {teamOptions.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-                  <MiniScoreInput label="G" value={m.goalsA} onChange={(v) => updateMatch(m.id, { goalsA: v })} />
-                  <MiniScoreInput label="P" value={m.pointsA} onChange={(v) => updateMatch(m.id, { pointsA: v })} />
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>v</span>
-                  <MiniScoreInput label="G" value={m.goalsB} onChange={(v) => updateMatch(m.id, { goalsB: v })} />
-                  <MiniScoreInput label="P" value={m.pointsB} onChange={(v) => updateMatch(m.id, { pointsB: v })} />
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {["scheduled", "live", "finished"].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => updateMatch(m.id, { status: s })}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 20,
-                        border: `1px solid ${C.pitch}33`,
-                        background: m.status === s ? C.pitch : "#fff",
-                        color: m.status === s ? "#fff" : C.ink,
-                        fontFamily: "Inter, sans-serif",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
+                {m.finalLabel !== "Presentations" && (
+                  <>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+                      <select
+                        value={m.teamA}
+                        onChange={(e) => updateMatch(m.id, { teamA: e.target.value })}
+                        style={{ flex: 1, minWidth: 0, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
+                      >
+                        <option value="">TBC…</option>
+                        {teamOptions.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, flexShrink: 0 }}>v</span>
+                      <select
+                        value={m.teamB}
+                        onChange={(e) => updateMatch(m.id, { teamB: e.target.value })}
+                        style={{ flex: 1, minWidth: 0, padding: 7, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 11.5 }}
+                      >
+                        <option value="">TBC…</option>
+                        {teamOptions.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+                      <MiniScoreInput label="G" value={m.goalsA} onChange={(v) => updateMatch(m.id, { goalsA: v })} />
+                      <MiniScoreInput label="P" value={m.pointsA} onChange={(v) => updateMatch(m.id, { pointsA: v })} />
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>v</span>
+                      <MiniScoreInput label="G" value={m.goalsB} onChange={(v) => updateMatch(m.id, { goalsB: v })} />
+                      <MiniScoreInput label="P" value={m.pointsB} onChange={(v) => updateMatch(m.id, { pointsB: v })} />
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {["scheduled", "live", "finished"].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => updateMatch(m.id, { status: s })}
+                          style={{
+                            padding: "5px 10px",
+                            borderRadius: 20,
+                            border: `1px solid ${C.pitch}33`,
+                            background: m.status === s ? C.pitch : "#fff",
+                            color: m.status === s ? "#fff" : C.ink,
+                            fontFamily: "Inter, sans-serif",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -2899,7 +2827,6 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 const typed = window.prompt('Type RESET to confirm:');
                 if (typed !== "RESET") return;
 
-                // Auto-download a safety backup before wiping anything.
                 const backup = { exportedAt: new Date().toISOString(), teams, matches, orders, announcements, sponsors, auditLog };
                 const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -2955,16 +2882,16 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
   );
 }
 
-function MiniScoreInput({ label, value, onChange }) {
+function MiniScoreInput({ label, value, onChange, large }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10, color: C.inkSoft }}>{label}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: large ? 6 : 4 }}>
+      <span style={{ fontFamily: "Inter, sans-serif", fontSize: large ? 13 : 10, color: C.inkSoft }}>{label}</span>
       <input
         type="number"
         min={0}
         value={value}
         onChange={(e) => onChange(Math.max(0, parseInt(e.target.value || "0", 10)))}
-        style={{ width: 36, padding: 6, borderRadius: 6, border: `1px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: 13, textAlign: "center" }}
+        style={{ width: large ? 56 : 36, padding: large ? 12 : 6, borderRadius: large ? 10 : 6, border: `${large ? 2 : 1}px solid ${C.pitch}33`, fontFamily: "Inter, sans-serif", fontSize: large ? 18 : 13, fontWeight: large ? 700 : 400, textAlign: "center" }}
       />
     </div>
   );
@@ -2982,6 +2909,7 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [showFinished, setShowFinished] = useState(false);
 
   const teamById = (id) => teams.find((t) => t.id === id) || { name: id, color: "#999" };
 
@@ -3029,24 +2957,28 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
     return (
       <div style={{ padding: 16 }}>
         <TopBar title="Enter score" onBack={() => { setSelectedId(null); setSaved(false); }} />
-        <div style={{ marginTop: 16, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time}</span>
+        <div style={{ marginTop: 16, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 14, padding: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 16, color: C.pitch }}>{m.time}</span>
             <PitchBadge pitch={m.pitch} />
           </div>
-          <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 16, color: C.ink, marginBottom: 16 }}>
-            {a.name} <span style={{ color: C.inkSoft, fontWeight: 400 }}>v</span> {b.name}
+          <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 19, color: C.ink, marginBottom: 22, lineHeight: 1.3 }}>
+            {a.name} <span style={{ color: C.inkSoft, fontWeight: 400, fontSize: 15 }}>v</span> {b.name}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink, minWidth: 90 }}>{a.name}</span>
-            <MiniScoreInput label="Goals" value={draft.goalsA} onChange={(v) => setDraft((d) => ({ ...d, goalsA: v }))} />
-            <MiniScoreInput label="Points" value={draft.pointsA} onChange={(v) => setDraft((d) => ({ ...d, pointsA: v }))} />
+          <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: `1px solid ${C.pitch}14` }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 10 }}>{a.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <MiniScoreInput label="Goals" value={draft.goalsA} onChange={(v) => setDraft((d) => ({ ...d, goalsA: v }))} large />
+              <MiniScoreInput label="Points" value={draft.pointsA} onChange={(v) => setDraft((d) => ({ ...d, pointsA: v }))} large />
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink, minWidth: 90 }}>{b.name}</span>
-            <MiniScoreInput label="Goals" value={draft.goalsB} onChange={(v) => setDraft((d) => ({ ...d, goalsB: v }))} />
-            <MiniScoreInput label="Points" value={draft.pointsB} onChange={(v) => setDraft((d) => ({ ...d, pointsB: v }))} />
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 10 }}>{b.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <MiniScoreInput label="Goals" value={draft.goalsB} onChange={(v) => setDraft((d) => ({ ...d, goalsB: v }))} large />
+              <MiniScoreInput label="Points" value={draft.pointsB} onChange={(v) => setDraft((d) => ({ ...d, pointsB: v }))} large />
+            </div>
           </div>
 
           {saved && (
@@ -3073,7 +3005,7 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
               });
               setSaved(true);
             }}
-            style={{ width: "100%", background: C.sliotar, color: C.ink, border: "none", borderRadius: 30, padding: 14, fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
+            style={{ width: "100%", background: C.sliotar, color: C.ink, border: "none", borderRadius: 30, padding: 18, fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 17, cursor: "pointer" }}
           >
             Save final score
           </button>
@@ -3083,6 +3015,8 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
   }
 
   const sorted = [...matches].sort((x, y) => x.time.localeCompare(y.time));
+  const finishedCount = sorted.filter((m) => m.status === "finished").length;
+  const visible = showFinished ? sorted : sorted.filter((m) => m.status !== "finished");
 
   return (
     <div style={{ paddingBottom: 20 }}>
@@ -3108,15 +3042,25 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
         }
       />
       <div style={{ padding: 16 }}>
-        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginBottom: 12 }}>
-          Tap a match to enter its final score.
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft }}>
+            Tap a match to enter its score.
+          </div>
+          {finishedCount > 0 && (
+            <button
+              onClick={() => setShowFinished((v) => !v)}
+              style={{ background: "none", border: "none", color: C.pitch, fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline", flexShrink: 0 }}
+            >
+              {showFinished ? "Hide finished" : `Show finished (${finishedCount})`}
+            </button>
+          )}
         </div>
-        {sorted.length === 0 && (
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
-            No fixtures yet — check back once the organiser adds them.
+        {visible.length === 0 && (
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 14, color: C.inkSoft, textAlign: "center", padding: "40px 20px" }}>
+            {sorted.length === 0 ? "No fixtures yet — check back once the organiser adds them." : "All done! Every match here is finished. 🎉"}
           </div>
         )}
-        {sorted.map((m) => {
+        {visible.map((m) => {
           const a = teamById(m.teamA);
           const b = teamById(m.teamB);
           return (
@@ -3131,21 +3075,31 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
                 width: "100%",
                 textAlign: "left",
                 background: "#fff",
-                border: `1px solid ${C.pitch}22`,
-                borderRadius: 12,
-                padding: 12,
-                marginBottom: 8,
+                border: `1.5px solid ${m.status === "finished" ? C.ash + "55" : C.pitch + "33"}`,
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 10,
                 cursor: "pointer",
+                opacity: m.status === "finished" ? 0.65 : 1,
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft }}>{m.time}</span>
-                  <PitchBadge pitch={m.pitch} />
-                </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 18, color: C.pitch }}>{m.time}</span>
                 <StatusPill status={m.status} />
               </div>
-              <MatchRow match={m} teamById={teamById} />
+              <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, lineHeight: 1.3 }}>
+                {m.finalLabel === "Presentations" ? "🏆 Presentations" : (
+                  <>
+                    {a.name} <span style={{ color: C.inkSoft, fontWeight: 400, fontSize: 14 }}>v</span> {b.name}
+                  </>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                <PitchBadge pitch={m.pitch} />
+                {m.finalLabel && !m.finalLabel.includes("Presentations") && (
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.sliotar }}>{finalIcon(m.finalLabel)} {m.finalLabel}</span>
+                )}
+              </div>
             </button>
           );
         })}
@@ -3266,7 +3220,6 @@ function playAnnouncementDing() {
       osc.stop(start + 0.75);
     });
   } catch {
-    // Web Audio unavailable or blocked — fail silently, the modal still shows.
   }
 }
 
@@ -3279,11 +3232,11 @@ export default function App() {
   const [announcements, setAnnouncements] = useState(DEFAULT_ANNOUNCEMENTS);
   const [sponsors, setSponsors] = useState(DEFAULT_SPONSORS);
   const [auditLog, setAuditLog] = useState([]);
-  const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
+  const [announcementModal, setAnnouncementModal] = useState(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [adminName, setAdminName] = useState("");
-  const [loginModalMode, setLoginModalMode] = useState(null); // null | "mentor" | "referee"
+  const [loginModalMode, setLoginModalMode] = useState(null);
   const [lunchWindows, setLunchWindows] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
 
@@ -3330,7 +3283,7 @@ export default function App() {
 
   const checkForNewAnnouncement = useCallback((list) => {
     if (!list || list.length === 0) return;
-    const newest = list[0]; // announcements are unshifted, so index 0 is newest
+    const newest = list[0];
     let seenId = null;
     try {
       seenId = localStorage.getItem("seenAnnouncementId");
@@ -3358,7 +3311,7 @@ export default function App() {
       setAnnouncements(a);
       setSponsors(s);
       setAuditLog(log);
-      setLunchWindows(Array.isArray(lunch) ? lunch : []); // old data was an object, not an array — discard if so
+      setLunchWindows(Array.isArray(lunch) ? lunch : []);
       setLoaded(true);
       checkForNewAnnouncement(a);
 
@@ -3370,8 +3323,6 @@ export default function App() {
     })();
   }, []);
 
-  // Poll for new announcements while the app stays open, so someone already
-  // using the app sees the modal+ding as soon as an organiser posts one.
   useEffect(() => {
     const interval = setInterval(async () => {
       const latest = await loadShared("announcements", DEFAULT_ANNOUNCEMENTS);
@@ -3381,11 +3332,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [checkForNewAnnouncement]);
 
-  // Poll for fixture/score changes too, so with multiple people using the app
-  // at once (referees entering scores, mentors and parents watching), everyone's
-  // Fixtures/Standings/Team views stay current without needing a manual reload.
-  // Skips the update if we saved locally very recently, so this can never race
-  // ahead of our own save and wipe fixtures we just generated/edited.
   useEffect(() => {
     const interval = setInterval(async () => {
       const recentlySaved = Date.now() - (lastSaveTimeRef.current.matches || 0) < 15000;
@@ -3415,7 +3361,7 @@ export default function App() {
   const logAction = useCallback((adminName, action) => {
     setAuditLog((prev) => {
       const entry = { id: `log${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, time: new Date().toISOString(), admin: adminName, action };
-      const next = [entry, ...prev].slice(0, 300); // keep the log from growing unbounded
+      const next = [entry, ...prev].slice(0, 300);
       saveShared("auditLog", next);
       return next;
     });
@@ -3507,8 +3453,6 @@ export default function App() {
     );
   else if (screen === "referee")
     body = <RefereeScreen teams={teams} matches={matches} setMatches={setMatches} persist={persist} logAction={logAction} wasRecentlySaved={wasRecentlySaved} />;
-  // If screen is somehow "admin" without being authed, body stays unset here and
-  // falls through to the safety-net default below — no state updates during render.
 
   if (!body) body = <TodayScreen teams={teams} clubs={clubs} matches={matches} announcements={announcements} sponsors={sponsors} setScreen={setScreen} setSelectedTeam={setSelectedTeam} myClubName={myClubObj?.name} myClubObj={myClubObj} onChangeClub={changeClub} onOpenWelcome={openWelcome} lunchWindows={lunchWindows} />;
 
@@ -3516,13 +3460,13 @@ export default function App() {
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.line, minHeight: "100dvh", display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif" }}>
       <style>{FONT_IMPORT}</style>
       <div style={{ flex: 1, overflowY: "auto" }}>{body}</div>
-      <BottomNav screen={screen} setScreen={setScreen} />
-      {(() => {
+      {screen !== "referee" && <BottomNav screen={screen} setScreen={setScreen} />}
+      {screen !== "referee" && (() => {
         let existing = null;
         try {
           existing = localStorage.getItem("refName");
         } catch {}
-        if (!existing) return null; // nothing to show in the footer at all until that happens
+        if (!existing) return null;
         return (
           <div style={{ textAlign: "center", padding: "8px 0", background: C.turf, borderTop: `1px solid ${C.pitchLight}`, display: "flex", justifyContent: "center", gap: 20 }}>
             <button
