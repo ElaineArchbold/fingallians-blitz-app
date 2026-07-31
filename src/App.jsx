@@ -2072,6 +2072,8 @@ const SLOT_MINUTES = 25;
 const START_HOUR = 10;
 const START_MIN = 0;
 
+// Round-robin for a group of 4 via the circle method: 3 rounds, each with 2 matches
+// that between them use all 4 teams (so they can run in parallel on different pitches).
 const roundRobin4 = (g) => [
   [[g[0], g[1]], [g[2], g[3]]],
   [[g[0], g[2]], [g[1], g[3]]],
@@ -2093,10 +2095,14 @@ function shuffle(arr) {
   return a;
 }
 
-const LUNCH_MINUTES = 40;
+const LUNCH_MINUTES = 25; // the real physical floor — one full match slot
 const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
 const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES;
 
+// Fills pitches for consecutive slots from the given pool, respecting the absolute
+// rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
+// pool empties sooner, so a lunch block can be padded to a real fixed duration.
+// Mutates `pool` and `lastPlayedSlot`; returns the next free slot index.
 function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null, extraOffsetRef = null) {
   let slotIndex = startSlot;
   let slotsUsed = 0;
@@ -2139,8 +2145,12 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
     slotsUsed++;
 
     if (excludeTeamIds) {
+      // Exclusion phase (a lunch window): run for exactly minSlots and stop.
+      // Whatever's left in the pool is deliberately deferred to a later phase —
+      // it is NOT this phase's job to finish, so don't keep looping over it.
       if (slotsUsed >= minSlots) break;
     } else {
+      // Normal phase (no exclusions): finish once the pool is actually empty.
       if (pool.length === 0 && slotsUsed >= minSlots) break;
     }
   }
@@ -2148,6 +2158,8 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
 }
 
 function generateGroupFixtures(teams) {
+  // Group by CLUB, not by grade — a club's A and B teams always land in the
+  // same club-group, so they always share the same lunch window.
   const clubIds = [...new Set(teams.map((t) => t.clubId))];
   const shuffledClubs = shuffle(clubIds);
   const clubGroup1 = shuffledClubs.slice(0, 4);
@@ -2155,6 +2167,9 @@ function generateGroupFixtures(teams) {
 
   const teamsFor = (clubList, grade) => teams.filter((t) => clubList.includes(t.clubId) && t.id.endsWith(grade));
 
+  // "Group 1" is the same 4 clubs whether you're looking at their A team or B team —
+  // this is the actual COMPETITION grouping (feeds the Cup/Shield finals) AND the
+  // same 4 clubs share their lunch sitting together.
   const groupsA = [teamsFor(clubGroup1, "A"), teamsFor(clubGroup2, "A")];
   const groupsB = [teamsFor(clubGroup1, "B"), teamsFor(clubGroup2, "B")];
 
@@ -2169,17 +2184,25 @@ function generateGroupFixtures(teams) {
   let slotIndex = 0;
   const extraOffset = { value: 0 };
 
+  // Warm-up: everyone's first round only (8 matches) — just enough that nobody
+  // breaks for lunch before playing at least once.
   const round1All = [...toMatches(rrAg1[0]), ...toMatches(rrAg2[0]), ...toMatches(rrBg1[0]), ...toMatches(rrBg2[0])];
   slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
+  // Remaining pool: rounds 2 and 3 combined (16 matches) — deliberately NOT
+  // split, so the lunch phases below have enough slack to actually pack well.
   let remainingPool = [
     ...toMatches(rrAg1[1]), ...toMatches(rrAg2[1]), ...toMatches(rrBg1[1]), ...toMatches(rrBg2[1]),
     ...toMatches(rrAg1[2]), ...toMatches(rrAg2[2]), ...toMatches(rrBg1[2]), ...toMatches(rrBg2[2]),
   ];
 
+  // 4 sittings of just 2 clubs each — the smallest, most private grouping.
+  // No forced delay here — lunch starts naturally as soon as warm-up finishes
+  // (typically ~11:15), which keeps the whole day comfortably clear of 3pm.
   const lunchPairs = [
-    shuffledClubs.slice(0, 3),
-    shuffledClubs.slice(3, 6),
+    shuffledClubs.slice(0, 2),
+    shuffledClubs.slice(2, 4),
+    shuffledClubs.slice(4, 6),
     shuffledClubs.slice(6, 8),
   ];
   const lunchWindows = [];
@@ -2192,6 +2215,9 @@ function generateGroupFixtures(teams) {
     const phaseStart = slotIndex;
     const fromLabel = minutesToLabel(START_HOUR * 60 + START_MIN + phaseStart * SLOT_MINUTES + extraOffset.value);
     slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds, extraOffset);
+    // Add whatever's left of the requested lunch length that doesn't fit a
+    // whole match slot — a genuine arbitrary-length break, not just a rounded
+    // multiple of 25 minutes.
     extraOffset.value += LUNCH_REMAINDER_MINUTES;
     lunchWindows.push({
       from: fromLabel,
@@ -2200,8 +2226,11 @@ function generateGroupFixtures(teams) {
     });
   });
 
+  // Mop-up: anything still unplayed (shouldn't normally be much, if anything —
+  // safety net in case a match's teams were still excluded right to the end).
   slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
 
+  // Finals — teams left blank until group placings are known.
   const cupTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value);
   fixtures.push({
     id: `final-acup-${Date.now()}`,
@@ -3502,7 +3531,7 @@ export default function App() {
         />
       )}
 
-      {showWelcomeMessage && (
+      {showWelcomeMessage && screen !== "referee" && (
         <div
           style={{
             position: "fixed",
@@ -3567,7 +3596,7 @@ export default function App() {
         </div>
       )}
 
-      {announcementModal && (
+      {announcementModal && screen !== "referee" && (
         <div
           style={{
             position: "fixed",
