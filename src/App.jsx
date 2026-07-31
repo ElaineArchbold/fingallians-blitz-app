@@ -1762,10 +1762,8 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
         orders[clubId] || {
           contactName: "",
           mobile: "",
-          playersA: 0,
-          mentorsA: 0,
-          playersB: 0,
-          mentorsB: 0,
+          players: 0,
+          mentors: 0,
           sausageRolls: 0,
           collectionTime: "",
           paid: false,
@@ -1870,9 +1868,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
 
   const set = (k, v) => setOrder((o) => ({ ...o, [k]: v }));
   const totalBreakfast = order?.sausageRolls || 0;
-  const teamATotal = (order?.playersA || 0) + (order?.mentorsA || 0);
-  const teamBTotal = (order?.playersB || 0) + (order?.mentorsB || 0);
-  const totalLunch = teamATotal + teamBTotal;
+  const totalLunch = (order?.players || 0) + (order?.mentors || 0);
   const amountDue = totalBreakfast * SAUSAGE_BAP_PRICE;
 
   return (
@@ -1914,16 +1910,10 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
         </div>
 
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginTop: 4, marginBottom: 8 }}>
-          A Team headcount
+          Headcount
         </div>
-        <Stepper label="Players" value={order?.playersA || 0} onChange={(v) => set("playersA", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
-        <Stepper label="Mentors" value={order?.mentorsA || 0} onChange={(v) => set("mentorsA", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
-
-        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginTop: 10, marginBottom: 8 }}>
-          B Team headcount
-        </div>
-        <Stepper label="Players" value={order?.playersB || 0} onChange={(v) => set("playersB", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
-        <Stepper label="Mentors" value={order?.mentorsB || 0} onChange={(v) => set("mentorsB", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Players" value={order?.players || 0} onChange={(v) => set("players", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
+        <Stepper label="Mentors" value={order?.mentors || 0} onChange={(v) => set("mentors", v)} disabled={locked} onLockedTap={() => setShowLockedModal(true)} />
 
         <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginTop: 10, marginBottom: 8 }}>
           Breakfast
@@ -1936,7 +1926,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 20, color: C.pitch }}>{totalBreakfast}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.ash}33` }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch (burgers — free)<br /><span style={{ fontSize: 10.5, fontWeight: 400, color: C.inkSoft }}>A team: {teamATotal} · B team: {teamBTotal}</span></span>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.ink }}>Total lunch (burgers — free)</span>
             <span style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: 20, color: C.pitch }}>{totalLunch}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2500,7 +2490,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
       const o = orders[t.id];
       if (!o) return acc;
       acc.sausageRolls += o.sausageRolls || 0;
-      acc.burgers += (o.playersA || 0) + (o.mentorsA || 0) + (o.playersB || 0) + (o.mentorsB || 0);
+      acc.burgers += (o.players || 0) + (o.mentors || 0);
       return acc;
     },
     { sausageRolls: 0, burgers: 0 }
@@ -2663,7 +2653,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                 {o && (
                   <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, marginTop: 4 }}>
                     {o.contactName} · {o.mobile} · {o.sausageRolls} Swanny's Breakfast Bangers (€{(o.sausageRolls * SAUSAGE_BAP_PRICE).toFixed(2)})<br />
-                    A team: {(o.playersA || 0)} players, {(o.mentorsA || 0)} mentors · B team: {(o.playersB || 0)} players, {(o.mentorsB || 0)} mentors · {(o.playersA || 0) + (o.mentorsA || 0) + (o.playersB || 0) + (o.mentorsB || 0)} burgers total (free)
+                    {(o.players || 0)} players, {(o.mentors || 0)} mentors · {(o.players || 0) + (o.mentors || 0)} burgers total (free)
                   </div>
                 )}
               </div>
@@ -3478,6 +3468,177 @@ function LoginModal({ mode, onClose, onMentorSuccess, onRefereeSuccess }) {
   );
 }
 
+function WelcomeMessageModal({ onDismiss }) {
+  const scrollRef = useRef(null);
+  const [scrolledToEnd, setScrolledToEnd] = useState(false);
+
+  const checkScrolled = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 15) setScrolledToEnd(true);
+  };
+
+  useEffect(() => {
+    // If the message already fits without scrolling (e.g. a tall screen), don't
+    // leave someone stuck unable to trigger a scroll event that will never fire.
+    const el = scrollRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 15) setScrolledToEnd(true);
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(20,17,16,0.7)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 18,
+          padding: "24px 22px 18px",
+          maxWidth: 360,
+          width: "100%",
+          maxHeight: "80vh",
+          display: "flex",
+          flexDirection: "column",
+          border: `3px solid ${C.sliotar}`,
+          boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div ref={scrollRef} onScroll={checkScrolled} style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+            <LogoBadge size={56} ringWidth={2.5} />
+          </div>
+          <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 16, color: C.pitch, textAlign: "center", marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.3 }}>
+            Welcome!
+          </div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: C.ink, lineHeight: 1.6 }}>
+            {WELCOME_PARAGRAPHS.map((p, i) => (
+              <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
+            ))}
+            <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => scrolledToEnd && onDismiss()}
+          disabled={!scrolledToEnd}
+          style={{
+            width: "100%",
+            background: scrolledToEnd ? C.pitch : C.ash,
+            color: "#fff",
+            border: "none",
+            borderRadius: 30,
+            padding: 12,
+            fontFamily: "Poppins, sans-serif",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: scrolledToEnd ? "pointer" : "not-allowed",
+            marginTop: 14,
+            flexShrink: 0,
+          }}
+        >
+          {scrolledToEnd ? "Let's go!" : "Scroll to read the full message ↓"}
+        </button>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 10, flexShrink: 0 }}>
+          You can always read this again on the Info tab.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FoodReminderModal({ onDismiss, onOrderNow }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(20,17,16,0.7)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={onDismiss}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff",
+          borderRadius: 18,
+          padding: "26px 22px",
+          maxWidth: 360,
+          width: "100%",
+          textAlign: "center",
+          border: `3px solid ${C.sliotar}`,
+          boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div style={{ fontSize: 40, marginBottom: 8 }}>🍔</div>
+        <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 17, color: C.pitch, marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.3 }}>
+          Don't Forget Your Food Order!
+        </div>
+        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: C.ink, lineHeight: 1.6, textAlign: "left", marginBottom: 18 }}>
+          <p style={{ margin: "0 0 10px" }}>
+            <b>Swanny's Breakfast Bangers</b> (sausage in a bun) will be available at registration — just €2 each.
+          </p>
+          <p style={{ margin: "0 0 10px" }}>
+            Every player and mentor gets a <b>free burger</b>, included by voucher.
+          </p>
+          <p style={{ margin: "0 0 10px" }}>
+            It's important to enter your exact numbers in advance — we'll have everything ready for your team at your allocated time.
+          </p>
+          <p style={{ margin: 0 }}>
+            Order (or check) your club's numbers on the <b>Team tab</b>, using the password your lead mentor has been given.
+          </p>
+        </div>
+        <button
+          onClick={onOrderNow}
+          style={{
+            width: "100%",
+            background: C.pitch,
+            color: "#fff",
+            border: "none",
+            borderRadius: 30,
+            padding: 12,
+            fontFamily: "Poppins, sans-serif",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: "pointer",
+            marginBottom: 8,
+          }}
+        >
+          Order now
+        </button>
+        <button
+          onClick={onDismiss}
+          style={{
+            width: "100%",
+            background: "none",
+            border: "none",
+            color: C.inkSoft,
+            fontFamily: "Inter, sans-serif",
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: "pointer",
+            padding: 6,
+          }}
+        >
+          Remind me later
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function playAnnouncementDing() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3512,6 +3673,7 @@ export default function App() {
   const [auditLog, setAuditLog] = useState([]);
   const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
+  const [showFoodReminder, setShowFoodReminder] = useState(false);
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [adminName, setAdminName] = useState("");
   const [loginModalMode, setLoginModalMode] = useState(null); // null | "mentor" | "referee"
@@ -3600,7 +3762,11 @@ export default function App() {
       try {
         seenWelcome = localStorage.getItem("seenWelcomeMessage");
       } catch {}
-      if (!seenWelcome) setShowWelcomeMessage(true);
+      if (!seenWelcome) {
+        setShowWelcomeMessage(true);
+      } else if (!ordersAreLocked()) {
+        setShowFoodReminder(true);
+      }
     })();
   }, []);
 
@@ -3644,6 +3810,7 @@ export default function App() {
       localStorage.setItem("seenWelcomeMessage", "1");
     } catch {}
     setShowWelcomeMessage(false);
+    if (!ordersAreLocked()) setShowFoodReminder(true);
   }, []);
 
   const logAction = useCallback((adminName, action) => {
@@ -3794,69 +3961,16 @@ export default function App() {
         />
       )}
 
-      {showWelcomeMessage && screen !== "referee" && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(20,17,16,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
+      {showWelcomeMessage && screen !== "referee" && <WelcomeMessageModal onDismiss={dismissWelcomeMessage} />}
+
+      {showFoodReminder && screen !== "referee" && !showWelcomeMessage && (
+        <FoodReminderModal
+          onDismiss={() => setShowFoodReminder(false)}
+          onOrderNow={() => {
+            setShowFoodReminder(false);
+            setScreen("team");
           }}
-          onClick={dismissWelcomeMessage}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#fff",
-              borderRadius: 18,
-              padding: "24px 22px",
-              maxWidth: 360,
-              width: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              border: `3px solid ${C.sliotar}`,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-              <LogoBadge size={56} ringWidth={2.5} />
-            </div>
-            <div style={{ fontFamily: "Poppins, sans-serif", fontWeight: 800, fontSize: 16, color: C.pitch, textAlign: "center", marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.3 }}>
-              Welcome!
-            </div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: C.ink, lineHeight: 1.6 }}>
-              {WELCOME_PARAGRAPHS.map((p, i) => (
-                <p key={i} style={{ margin: i === 0 ? "0 0 8px" : "0 0 10px" }}>{p}</p>
-              ))}
-              <p style={{ margin: 0, fontWeight: 700, color: C.pitch }}>{WELCOME_SIGNOFF}</p>
-            </div>
-            <button
-              onClick={dismissWelcomeMessage}
-              style={{
-                width: "100%",
-                background: C.pitch,
-                color: "#fff",
-                border: "none",
-                borderRadius: 30,
-                padding: 12,
-                fontFamily: "Poppins, sans-serif",
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: "pointer",
-                marginTop: 18,
-              }}
-            >
-              Let's go!
-            </button>
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, textAlign: "center", marginTop: 10 }}>
-              You can always read this again on the Info tab.
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {announcementModal && screen !== "referee" && (
