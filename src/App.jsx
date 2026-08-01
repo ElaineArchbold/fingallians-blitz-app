@@ -724,8 +724,8 @@ function DayTimeline({ matches, lunchWindows, presentations }) {
       time: lastGroupTime,
       label: "Final group matches — finalists confirmed shortly after",
     },
-    cupFinal && { time: cupFinal.time, label: "🏆 Cup Finals" },
-    shieldFinal && { time: shieldFinal.time, label: "🛡️ Shield Finals" },
+    shieldFinal && { time: shieldFinal.time, label: "\uD83D\uDEE1\uFE0F Shield Finals" },
+    cupFinal && { time: cupFinal.time, label: "\uD83C\uDFC6 Cup Finals" },
     presentations && {
       time: presentations.from,
       label: `Presentations & close — all done by ${presentations.to}`,
@@ -1111,13 +1111,14 @@ function TeamDetailScreen({ teamId, teams, matches, setScreen }) {
 }
 
 function ClubsShowcase({ clubs, setScreen }) {
+  const [selectedClub, setSelectedClub] = useState(null);
   return (
     <div style={{ background: "#fff", padding: "16px 12px 14px", borderBottom: `1px solid ${C.pitch}14` }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
         {clubs.map((c) => (
           <button
             key={c.id}
-            onClick={() => setScreen("teams")}
+            onClick={() => setSelectedClub(c)}
             style={{
               background: "none",
               border: "none",
@@ -1147,6 +1148,21 @@ function ClubsShowcase({ clubs, setScreen }) {
           </button>
         ))}
       </div>
+      {selectedClub && (
+        <div
+          onClick={() => setSelectedClub(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(20,17,16,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, padding: "32px 24px", maxWidth: 300, width: "100%", textAlign: "center", boxShadow: "0 16px 50px rgba(0,0,0,0.4)", position: "relative" }}>
+            <div style={{ width: 120, height: 120, borderRadius: "50%", margin: "0 auto 16px", padding: 4, background: `linear-gradient(135deg, ${C.sliotar}, ${selectedClub.color})` }}>
+              <TeamBadge team={selectedClub} size={112} />
+            </div>
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 20, color: C.ink, marginBottom: 4 }}>{selectedClub.name}</div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft }}>{selectedClub.town}, Co. {selectedClub.county}</div>
+            <button onClick={() => setSelectedClub(null)} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "#f3ecec", border: "none", fontSize: 16, fontWeight: 900, color: C.pitch, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>X</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1546,12 +1562,12 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
     },
     {
       title: "Food & beverages",
-      body: "Please bring your own water bottles — a refill station is outside the changing rooms. On arrival each team is given vouchers for players and mentors for burgers from the BBQ at lunchtime (teams called individually to avoid queues), plus vouchers for tea or coffee for mentors. Teas, coffees and breakfast sausage rolls are also available to purchase from the BBQ through the day. A separate BBQ area is open for anyone wanting to buy a burger later on.",
+      body: "Please bring your own water bottles - a refill station is outside the changing rooms. On arrival each team is given vouchers for players and mentors for burgers from the BBQ at lunchtime (teams called individually to avoid queues), plus vouchers for tea or coffee for mentors. Teas, coffees and breakfast sausage rolls are also available to purchase from the BBQ through the day. A separate BBQ area is open for anyone wanting to buy a burger later on.",
     },
     {
       title: "Parking & directions",
       image: `/parking-map.jpg?v=${CREST_VERSION}`,
-      body: "Limited car parking is available at Fingallians GAA, and buses are welcome to park on site. Overflow parking has been kindly provided by the HSE at Swords Business Campus, a short ten-minute walk from the grounds — stewards will be on duty at both locations to guide you.",
+      body: "Limited car parking is available at Fingallians GAA, and buses are welcome to park on site. Overflow parking has been kindly provided by the HSE at Swords Business Campus, a short ten-minute walk from the grounds - stewards will be on duty at both locations to guide you.",
       maps: [
         { label: "Open overflow parking in Maps", url: "https://maps.google.com/?q=HSE+Swords+Business+Campus" },
       ],
@@ -1563,7 +1579,7 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
     },
     {
       title: "Facilities & medical",
-      body: "The Order of Malta will provide medical assistance at the entrance to the main pitch — teams are welcome to bring their own first aid kits too. Toilets are at the Fingallians clubhouse through the changing-room entrance. Tents, gazebos or changing rooms will be allocated to visiting teams where available, for storing kit bags. Main-pitch matches can be viewed from the hill on the far side of the pitch; all-weather matches can be watched from outside the pitch.",
+      body: "The Order of Malta will provide medical assistance at the entrance to the main pitch - teams are welcome to bring their own first aid kits too. Toilets are at the Fingallians clubhouse through the changing-room entrance. Tents, gazebos or changing rooms will be allocated to visiting teams where available, for storing kit bags. Main-pitch matches can be viewed from the hill on the far side of the pitch; all-weather matches can be watched from outside the pitch.",
     },
     {
       title: "Playing rules",
@@ -1585,9 +1601,10 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
       highlighted: [
         "All mentors must wear bibs at all times so they are clearly identifiable on and around the pitch.",
         "Spectators are welcome inside the main pitch area but must remain around the sides of the pitches only. No spectators are permitted between Pitch 2 and Pitch 3.",
-        "Strictly only players, mentors, and referees are permitted on the all-weather (astro) surface, and only with appropriate footwear. No studded boots on the astro.",
+        "Strictly only players, mentors, and referees are permitted on the all-weather (astro) surface, and only with appropriate footwear.",
       ],
-      note: "Scoring: 3 points for a goal, 1 point for a point over the bar. It's not about winning — the goal is for every child to enjoy the day. If there's a clear skill gap between teams, please rest your best players or focus on certain skills to keep matches competitive.",
+      note: "It's not about winning - the goal is for every child to enjoy the day. If there's a clear skill gap between teams, please rest your best players or focus on certain skills to keep matches competitive.",
+      preNote: "Scoring: 3 points for a goal, 1 point for a point over the bar.",
     },
     {
       title: "Communications",
@@ -1670,6 +1687,11 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
                 ))}
               </ul>
             )}
+            {it.preNote && (
+              <div style={{ marginTop: 8, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
+                {it.preNote}
+              </div>
+            )}
             {it.highlighted && (
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                 {it.highlighted.map((h, i) => (
@@ -1681,7 +1703,7 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
               </div>
             )}
             {it.note && (
-              <div style={{ marginTop: 8, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.pitch, fontWeight: 600, lineHeight: 1.5 }}>
+              <div style={{ marginTop: 8, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.inkSoft, fontWeight: 500, lineHeight: 1.5, fontStyle: "italic" }}>
                 {it.note}
               </div>
             )}
