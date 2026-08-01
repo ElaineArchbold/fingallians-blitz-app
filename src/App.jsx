@@ -104,7 +104,7 @@ const DEFAULT_TEAMS = buildTeamsFromClubs(DEFAULT_CLUBS);
 const DEFAULT_MATCHES = [];
 
 const DEFAULT_ANNOUNCEMENTS = [
-  { id: "a1", text: "Registration is open at the clubhouse from 9:15 a.m. Please have team sheets ready.", time: "08:00" },
+  { id: "a-preorder", text: "Don't forget to submit your food order on the Team tab -- confirm your headcount for burgers and pre-order any Swanny's Breakfast Bangers. Deadline: 19 August.", time: "" },
 ];
 
 const DEFAULT_ORDERS = {};
@@ -1336,11 +1336,11 @@ function computeScheduledAnnouncements(matches, lunchWindows, clubs) {
   const minToLabel = (mins) => `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, "0")}`;
   const LEAD_MINUTES = 10; // every scheduled announcement fires this many minutes ahead of its event
 
-  // Registration — fires 10 minutes ahead of the published registration time.
+  // Registration — fires at 9:02 a.m. on event morning.
   list.push({
     id: "sched-registration",
-    triggerMin: timeToMin(EVENT.registration) - LEAD_MINUTES,
-    text: `📢 Registration opens shortly, at ${EVENT.registration}! Head to the clubhouse to register your team, then over to the club ball wall for your team photo.`,
+    triggerMin: 9 * 60 + 2,
+    text: `Registration opens at ${EVENT.registration}! Head to the clubhouse to register your team, then over to the club ball wall for your team photo.`,
   });
 
   // One per lunch sitting, naming the clubs in it — fires 10 minutes ahead so
@@ -1351,18 +1351,18 @@ function computeScheduledAnnouncements(matches, lunchWindows, clubs) {
       list.push({
         id: `sched-lunch-${i}`,
         triggerMin: timeToMin(w.from) - LEAD_MINUTES,
-        text: `🍔 Burger break coming up at ${w.from} for: ${names}. Head to the BBQ area when your match finishes.`,
+        text: `Burger break at ${w.from} for: ${names}. Burgers will be ready and handed to your lead mentor at your allocated time.`,
       });
     });
   }
 
-  // Finals — fires 10 minutes ahead of the Cup Final kickoff.
-  const cupFinal = matches.find((m) => m.finalLabel === "A Cup Final");
-  if (cupFinal) {
+  // Finals — fires 10 minutes ahead of the Shield Final kickoff (first final).
+  const shieldFinal = matches.find((m) => m.finalLabel === "A Shield Final");
+  if (shieldFinal) {
     list.push({
       id: "sched-finals",
-      triggerMin: timeToMin(cupFinal.time) - LEAD_MINUTES,
-      text: `🏆 Finals are almost here! Make your way to the main pitch — Cup Finals kick off at ${cupFinal.time}.`,
+      triggerMin: timeToMin(shieldFinal.time) - LEAD_MINUTES,
+      text: `Finals are almost here! Make your way to the main pitch. Shield Finals kick off at ${shieldFinal.time}, Cup Finals to follow.`,
     });
   }
 
