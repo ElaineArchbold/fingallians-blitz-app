@@ -1950,6 +1950,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
               if (!mentorName.trim()) return;
               if (checkPassword(passcode, CLUB_PASSWORDS[clubId])) {
                 setAuthedClub(true);
+                setOrder((o) => ({ ...o, contactName: o?.contactName || mentorName.trim() }));
                 logAction(mentorName.trim(), `Unlocked food order for ${team.name}`);
               } else {
                 setPasswordError(true);
@@ -1999,7 +2000,7 @@ function FoodScreen({ clubs, orders, saveOrder, sponsors, defaultClubId, embedde
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <input
-            placeholder="Mobile number"
+            placeholder="Mobile number (optional)"
             value={order?.mobile || ""}
             onChange={(e) => (locked ? setShowLockedModal(true) : set("mobile", e.target.value))}
             readOnly={locked}
