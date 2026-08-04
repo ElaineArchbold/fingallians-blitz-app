@@ -2825,14 +2825,15 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               Finals fill in automatically the moment a group's results are complete. If you've edited fixtures directly and think a final should be fillable now, recalculate manually here.
             </div>
             <button
-              onClick={() => {
-                const next = autoFillFinals(matches, teams);
-                const changed = next.some((m, i) => m.teamA !== matches[i].teamA);
+              onClick={async () => {
+                const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
+                const next = autoFillFinals(latest, teams);
+                const changed = next.some((m, i) => m.teamA !== latest[i].teamA);
                 setMatches(next);
                 persist("matches", next);
                 if (changed) {
                   next.forEach((m, i) => {
-                    const before = matches[i];
+                    const before = latest[i];
                     if (before.finalLabel && !before.teamA && m.teamA) {
                       const a = teams.find((t) => t.id === m.teamA);
                       const b = teams.find((t) => t.id === m.teamB);
@@ -2898,7 +2899,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               )}
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (!newFixture.teamA || !newFixture.teamB || newFixture.teamA === newFixture.teamB) return;
                 const fixture = {
                   id: `m${Date.now()}`,
@@ -2909,7 +2910,8 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                   goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
                   status: "scheduled",
                 };
-                const next = [...matches, fixture];
+                const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
+                const next = [...latest, fixture];
                 setMatches(next);
                 persist("matches", next);
                 const a = teams.find((t) => t.id === newFixture.teamA);
@@ -2948,8 +2950,9 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                     )}
                   </div>
                   <button
-                    onClick={() => {
-                      const next = matches.filter((x) => x.id !== m.id);
+                    onClick={async () => {
+                      const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
+                      const next = latest.filter((x) => x.id !== m.id);
                       setMatches(next);
                       persist("matches", next);
                       logAction(adminName, `Deleted fixture: ${a?.name || m.teamA || "TBC"} v ${b?.name || m.teamB || "TBC"} (${m.time}, ${m.pitch})`);
@@ -3480,7 +3483,14 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
           {saved && <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(20,17,16,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}><div style={{ background: "#fff", borderRadius: 18, padding: "28px 24px", maxWidth: 340, width: "100%", textAlign: "center", border: `3px solid ${C.sliotar}`, boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}><Check size={40} color={C.pitch} style={{ marginBottom: 12 }} /><div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 18, color: C.pitch, textTransform: "uppercase", marginBottom: 8 }}>{wasAdjust ? "Score Adjusted" : "Score Saved"}</div><div style={{ fontFamily: "Inter, sans-serif", fontSize: 14, color: C.ink, marginBottom: 20 }}>{scoreLabel(draft.goalsA, draft.pointsA)} v {scoreLabel(draft.goalsB, draft.pointsB)}</div><button onClick={() => { const nm = matches.filter((x) => x.pitch === myPitch && x.status !== "finished" && x.id !== m.id && x.teamA && x.teamB).sort((x, y) => x.time.localeCompare(y.time))[0]; if (nm) { setDraft({ goalsA: nm.goalsA, pointsA: nm.pointsA, goalsB: nm.goalsB, pointsB: nm.pointsB }); setSelectedId(nm.id); } else { setSelectedId(null); } setSaved(false); }} style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 30, padding: 14, fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 16, cursor: "pointer", marginBottom: 8 }}>{(() => { const nm = matches.filter((x) => x.pitch === myPitch && x.status !== "finished" && x.id !== m.id && x.teamA && x.teamB); return nm.length > 0 ? "Next match" : "Back to list"; })()}</button><button onClick={() => { setSelectedId(null); setSaved(false); }} style={{ width: "100%", background: "none", border: "none", color: C.inkSoft, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 8 }}>Back to match list</button></div></div>}
           <button
             onClick={async () => {
-              const updatedList = matches.map((x) => (x.id === m.id ? { ...x, ...draft, status: "finished" } : x));
+              // Pull the freshest copy from the server right before writing, same
+              // safeguard AdminScreen uses — with multiple pitches/referees saving
+              // at once, writing from a stale local `matches` array would silently
+              // erase whatever another referee just saved for a different match.
+              // Skipped only if WE just saved seconds ago, so that fetch can't
+              // itself race ahead of our own write and hand back stale data.
+              const latest = wasRecentlySaved("matches") ? matches : await loadShared("matches", matches);
+              const updatedList = latest.map((x) => (x.id === m.id ? { ...x, ...draft, status: "finished" } : x));
               const next = autoFillFinals(updatedList, teams);
               setMatches(next);
               await persist("matches", next);

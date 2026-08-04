@@ -8,36 +8,34 @@ password-gated Organiser dashboard.
 ## Stack
 
 - **React + Vite** — front end
-- **Supabase** (Postgres) — shared data store, reached through a Vercel serverless function so the
-  database credentials (the `service_role` key) never reach the browser. Previously Turso/libSQL —
-  migrated over; see `migrate_kv_to_supabase.sql` for how the existing data was carried across.
-- **Vercel** — hosting for both the static site and the `/api/kv` function
+- **Supabase** (Postgres) — shared data store, read/written directly from the browser via
+  `src/supabaseClient.js` using the anon/public key. Previously Turso/libSQL via a server-side
+  Vercel function — migrated over; see `migrate_kv_to_supabase.sql` for how the existing data was
+  carried across.
+- **Vercel** — hosting for the static site (no server-side API route needed anymore)
 
 ## Local development
 
 ```bash
 npm install
-vercel dev
+npm run dev
 ```
 
-`vercel dev` runs the Vite front end and the `/api/kv` function together on one local port. Plain
-`npm run dev` will run the front end alone, but food orders / fixtures / standings won't save
-because the API route won't be running.
-
-Environment variables needed (see `.env.example`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-(the service_role key, not anon — see the comment in `.env.example`). For `vercel dev` these can
-live in a `.env.local` file in the project root, or be pulled from your Vercel project with
-`vercel env pull .env.local`.
+Environment variables needed (see `.env.example`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+(the anon/public key — see the comment in `.env.example` for why service_role must never go here).
+For local dev these live in a `.env.local` file in the project root, or can be pulled from your
+Vercel project with `vercel env pull .env.local`.
 
 ## Data model
 
 Everything (teams, fixtures, food orders, announcements, sponsors) is stored as JSON blobs in a
-single `blitz_kv_store` table in Supabase (created via `migrate_kv_to_supabase.sql`), keyed by
-name — the same shape the original Turso prototype used. It's deliberately simple for a one-day
-event; if this gets reused for other tournaments it'd be worth splitting into proper relational
-tables. Row Level Security is enabled on the table with no policies, so it's only reachable via
-the server-side `service_role` key — not the anon key, and not Supabase's auto-generated public
-REST API.
+single `kv_store` table in Supabase (created via `migrate_kv_to_supabase.sql`), keyed by name —
+the same shape the original Turso prototype used. It's deliberately simple for a one-day event;
+if this gets reused for other tournaments it'd be worth splitting into proper relational tables.
+Row Level Security is enabled with policies granting the anon role read/write on this table only —
+this mirrors the app's own access control (admin passcode, club passwords, referee link) rather
+than gatekeeping at the database level, which is the standard trust model for a client-side app
+like this one.
 
 ## Admin dashboard
 
