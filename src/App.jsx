@@ -118,23 +118,16 @@ const DEFAULT_SPONSORS = [
 ];
 
 // Named organiser logins — all have identical full access (fixtures, scores, all food orders,
-// announcements, sponsors). Passcode is simply the person's own first name (case-insensitive
-// on entry, see findAdminByCode below). Add/remove people here any time.
+// announcements, sponsors). Each person has their own PIN (not their name) — add/remove
+// people or change PINs here any time. Unrelated to the club food-ordering passcodes below.
 const ADMIN_ACCOUNTS = {
-  Elaine: "Elaine",
-  Conor: "Conor",
-  Dara: "Dara",
-  Deco: "Deco",
-  Mark: "Mark",
-  Sean: "Sean",
-  Sinead: "Sinead",
-  Pat: "Pat",
-  Rebecca: "Rebecca",
+  "1001": "Elaine",
+  "1002": "Sean",
+  "1003": "Dara",
 };
 function findAdminByCode(code) {
-  const trimmed = (code || "").trim().toLowerCase();
-  const match = Object.entries(ADMIN_ACCOUNTS).find(([key]) => key.toLowerCase() === trimmed);
-  return match ? match[1] : null;
+  const trimmed = (code || "").trim();
+  return ADMIN_ACCOUNTS[trimmed] || null;
 }
 
 // Referees get in via a secret link (e.g. blitz.fingallians.fun/?ref=blitzref2026)
@@ -3916,8 +3909,14 @@ export default function App() {
   const [announcementModal, setAnnouncementModal] = useState(null); // holds the announcement to show, or null
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [showFoodReminder, setShowFoodReminder] = useState(false);
-  const [adminAuthed, setAdminAuthed] = useState(false);
-  const [adminName, setAdminName] = useState("");
+  // Persisted like referee/club sign-in, so admins aren't logged out on every
+  // reload — cleared on explicit "Sign out" only.
+  const [adminName, setAdminName] = useState(() => {
+    try { return localStorage.getItem("adminName") || ""; } catch { return ""; }
+  });
+  const [adminAuthed, setAdminAuthed] = useState(() => {
+    try { return !!localStorage.getItem("adminName"); } catch { return false; }
+  });
   const [loginModalMode, setLoginModalMode] = useState(null); // null | "mentor" | "referee"
   const [lunchWindows, setLunchWindows] = useState([]);
   const [presentations, setPresentations] = useState(null);
@@ -4210,6 +4209,7 @@ export default function App() {
         adminName={adminName}
         onLogout={() => {
           logAction(adminName, "Logged out");
+          try { localStorage.removeItem("adminName"); } catch {}
           setAdminAuthed(false);
           setAdminName("");
           setScreen("today");
@@ -4239,6 +4239,7 @@ export default function App() {
           mode={loginModalMode}
           onClose={() => setLoginModalMode(null)}
           onMentorSuccess={(name) => {
+            try { localStorage.setItem("adminName", name); } catch {}
             setAdminName(name);
             setAdminAuthed(true);
             logAction(name, "Logged in");

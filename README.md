@@ -39,8 +39,11 @@ like this one.
 
 ## Admin dashboard
 
-Passcode is hardcoded in `src/App.jsx` (`ADMIN_CODE`). Fine for a single low-stakes event day —
-swap it out (or add real auth) before reusing this for anything more sensitive.
+Each admin has their own PIN, hardcoded in `src/App.jsx` (`ADMIN_ACCOUNTS`) — add, remove, or
+change PINs there any time. Session persists in localStorage until "Sign out" is tapped. Fine for
+a single low-stakes event day — swap it out (or add real server-side auth) before reusing this
+for anything more sensitive, since the PINs are shipped in the browser bundle like everything
+else in this client-side app.
 
 ## Deploying changes
 
