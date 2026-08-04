@@ -3547,10 +3547,22 @@ function RefereeScreen({ teams, matches, setMatches, persist, logAction, wasRece
           return (
             <button
               key={m.id}
-              onClick={() => {
-                wasAdjustRef.current = m.status === "finished";
-                setDraft({ goalsA: m.goalsA, pointsA: m.pointsA, goalsB: m.goalsB, pointsB: m.pointsB });
-                setSelectedId(m.id);
+              onClick={async () => {
+                let target = m;
+                if (m.status === "finished") {
+                  // Re-check the server before opening an already-finished match —
+                  // guards against two people (or the same ref, twice) both viewing
+                  // this pitch and one having a stale/finished view of it.
+                  const latest = await loadShared("matches", matches);
+                  target = latest.find((x) => x.id === m.id) || m;
+                  const ok = window.confirm(
+                    `This match already has a final score: ${teamById(target.teamA).name} ${scoreLabel(target.goalsA, target.pointsA)} - ${scoreLabel(target.goalsB, target.pointsB)} ${teamById(target.teamB).name}. Change it?`
+                  );
+                  if (!ok) return;
+                }
+                wasAdjustRef.current = target.status === "finished";
+                setDraft({ goalsA: target.goalsA, pointsA: target.pointsA, goalsB: target.goalsB, pointsB: target.pointsB });
+                setSelectedId(target.id);
                 setSaved(false);
               }}
               style={{
@@ -3906,7 +3918,12 @@ export default function App() {
   const [screen, setScreen] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("ref") === REFEREE_SECRET) return "referee";
+      // Resume referee mode either from the link's ?ref= secret, or — so a ref who
+      // fully closes their phone/browser (not just backgrounds it) still lands back
+      // in referee mode without re-scanning the QR code — from a previously
+      // verified PIN on this device. "Sign out" clears refPinOk, so this only
+      // persists until they deliberately sign out.
+      if (params.get("ref") === REFEREE_SECRET || localStorage.getItem("refPinOk") === "1") return "referee";
       return localStorage.getItem("myClub") ? "team" : "welcome";
     } catch {
       return "welcome";
@@ -3917,7 +3934,10 @@ export default function App() {
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("ref") === REFEREE_SECRET) { isRefMode.current = true; setScreen("referee"); }
+      if (params.get("ref") === REFEREE_SECRET || localStorage.getItem("refPinOk") === "1") {
+        isRefMode.current = true;
+        setScreen("referee");
+      }
     } catch {}
   }, []);
 
