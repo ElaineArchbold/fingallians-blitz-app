@@ -2338,11 +2338,14 @@ const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; 
 // rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
 // pool empties sooner, so a lunch block can be padded to a real fixed duration.
 // Mutates `pool` and `lastPlayedSlot`; returns the next free slot index.
-function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null, extraOffsetRef = null) {
+function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null, extraOffsetRef = null, pitchCounts = null) {
   let slotIndex = startSlot;
   let slotsUsed = 0;
   let guard = 0;
   const offset = extraOffsetRef ? extraOffsetRef.value : 0;
+  // Shared across every fillSlots call for the whole day (passed in by the
+  // caller) so pitch balance is tracked globally, not reset each phase.
+  const counts = pitchCounts || Object.fromEntries(PITCHES.map((p) => [p, 0]));
   while (guard < 200) {
     guard++;
     const used = new Set();
@@ -2362,13 +2365,21 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
     }
     if (slotMatches.length > 0) {
       const timeLabel = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + offset);
+      // Assign pitches by whichever have hosted the FEWEST matches so far, rather
+      // than by fixed position in this slot's list. A slot with fewer than 3
+      // eligible matches (e.g. during a lunch exclusion) would otherwise always
+      // shortchange the same pitch — this keeps the running total balanced
+      // across the whole day instead.
+      const pitchOrder = [...PITCHES].sort((p1, p2) => counts[p1] - counts[p2]);
       slotMatches.forEach((m, pi) => {
+        const pitch = pitchOrder[pi];
+        counts[pitch]++;
         lastPlayedSlot[m.a.id] = slotIndex;
         lastPlayedSlot[m.b.id] = slotIndex;
         fixtures.push({
           id: `m${Date.now()}_${fixtures.length}_${Math.random().toString(36).slice(2, 6)}`,
           time: timeLabel,
-          pitch: PITCHES[pi],
+          pitch,
           teamA: m.a.id,
           teamB: m.b.id,
           goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
@@ -2419,11 +2430,15 @@ function generateGroupFixtures(teams) {
   const lastPlayedSlot = {};
   let slotIndex = 0;
   const extraOffset = { value: 0 };
+  // Shared across every fillSlots call below (warm-up, both lunch phases,
+  // mop-up) so pitch totals stay balanced across the whole day rather than
+  // each phase restarting its own count.
+  const pitchCounts = Object.fromEntries(PITCHES.map((p) => [p, 0]));
 
   // Warm-up: everyone's first round only (8 matches) — just enough that nobody
   // breaks for lunch before playing at least once.
   const round1All = [...toMatches(rrAg1[0]), ...toMatches(rrAg2[0]), ...toMatches(rrBg1[0]), ...toMatches(rrBg2[0])];
-  slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
+  slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset, pitchCounts);
 
   // Remaining pool: rounds 2 and 3 combined (16 matches) — deliberately NOT
   // split, so the 2 lunch phases below have enough slack to actually
@@ -2449,7 +2464,7 @@ function generateGroupFixtures(teams) {
     });
     const phaseStart = slotIndex;
     const fromLabel = minutesToLabel(START_HOUR * 60 + START_MIN + phaseStart * SLOT_MINUTES + extraOffset.value);
-    slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds, extraOffset);
+    slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, LUNCH_MIN_SLOTS, excludeIds, extraOffset, pitchCounts);
     // Add whatever's left of the requested lunch length that doesn't fit a
     // whole match slot — a genuine arbitrary-length break, not just a rounded
     // multiple of 25 minutes.
@@ -2463,7 +2478,7 @@ function generateGroupFixtures(teams) {
 
   // Mop-up: anything still unplayed (shouldn't normally be much, if anything —
   // safety net in case a match's teams were still excluded right to the end).
-  slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset);
+  slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset, pitchCounts);
 
   // Finals — teams left blank until group placings are known.
   // Shield finals first, then Cup finals.
