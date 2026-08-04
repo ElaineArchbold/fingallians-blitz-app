@@ -8,8 +8,9 @@ password-gated Organiser dashboard.
 ## Stack
 
 - **React + Vite** — front end
-- **Turso** (libSQL / SQLite at the edge) — shared data store, reached through a Vercel serverless
-  function so the database credentials never reach the browser
+- **Supabase** (Postgres) — shared data store, reached through a Vercel serverless function so the
+  database credentials (the `service_role` key) never reach the browser. Previously Turso/libSQL —
+  migrated over; see `migrate_kv_to_supabase.sql` for how the existing data was carried across.
 - **Vercel** — hosting for both the static site and the `/api/kv` function
 
 ## Local development
@@ -23,16 +24,20 @@ vercel dev
 `npm run dev` will run the front end alone, but food orders / fixtures / standings won't save
 because the API route won't be running.
 
-Environment variables needed (see `.env.example`): `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`.
-For `vercel dev` these can live in a `.env.local` file in the project root, or be pulled from your
-Vercel project with `vercel env pull .env.local`.
+Environment variables needed (see `.env.example`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+(the service_role key, not anon — see the comment in `.env.example`). For `vercel dev` these can
+live in a `.env.local` file in the project root, or be pulled from your Vercel project with
+`vercel env pull .env.local`.
 
 ## Data model
 
 Everything (teams, fixtures, food orders, announcements, sponsors) is stored as JSON blobs in a
-single `kv_store` table (`schema.sql`), keyed by name — the same shape the original prototype used.
-It's deliberately simple for a one-day event; if this gets reused for other tournaments it'd be
-worth splitting into proper relational tables.
+single `blitz_kv_store` table in Supabase (created via `migrate_kv_to_supabase.sql`), keyed by
+name — the same shape the original Turso prototype used. It's deliberately simple for a one-day
+event; if this gets reused for other tournaments it'd be worth splitting into proper relational
+tables. Row Level Security is enabled on the table with no policies, so it's only reachable via
+the server-side `service_role` key — not the anon key, and not Supabase's auto-generated public
+REST API.
 
 ## Admin dashboard
 
