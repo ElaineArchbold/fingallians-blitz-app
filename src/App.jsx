@@ -389,13 +389,14 @@ function StatusPill({ status }) {
 }
 
 /* ---------- Bottom nav ---------- */
-function BottomNav({ screen, setScreen }) {
+function BottomNav({ screen, setScreen, showAdmin }) {
   const items = [
     { key: "today", label: "Home", icon: Home },
     { key: "fixtures", label: "Fixtures", icon: Trophy },
     { key: "standings", label: "Standings", icon: Users },
     { key: "team", label: "Team", icon: Shield },
     { key: "info", label: "Info", icon: Info },
+    ...(showAdmin ? [{ key: "admin", label: "Admin", icon: Lock }] : []),
   ];
   return (
     <div
@@ -3938,6 +3939,9 @@ export default function App() {
       // verified PIN on this device. "Sign out" clears refPinOk, so this only
       // persists until they deliberately sign out.
       if (params.get("ref") === REFEREE_SECRET || localStorage.getItem("refPinOk") === "1") return "referee";
+      // Same idea for admin — resume straight back on the Admin screen after a
+      // reload/reopen, not just silently stay "authed" underneath a Home screen.
+      if (localStorage.getItem("adminName")) return "admin";
       return localStorage.getItem("myClub") ? "team" : "welcome";
     } catch {
       return "welcome";
@@ -4232,7 +4236,7 @@ export default function App() {
           <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 11, color: C.pitch, letterSpacing: 2, textTransform: "uppercase", opacity: 0.6 }}>Meas &#183; Neart &#183; Bua</span>
         </div>
       )}
-      {screen !== "referee" && <BottomNav screen={screen} setScreen={setScreen} />}
+      {screen !== "referee" && <BottomNav screen={screen} setScreen={setScreen} showAdmin={adminAuthed} />}
 
       {loginModalMode && (
         <LoginModal
