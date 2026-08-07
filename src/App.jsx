@@ -477,7 +477,21 @@ function TopBar({ title, onBack, right, followedTeam }) {
 
 function SponsorStrip({ sponsors }) {
   const list = sponsors;
+  // 2 per page so each logo can be shown much bigger, auto-rotating through
+  // the rest rather than cramming everyone into one row.
+  const pages = [];
+  for (let i = 0; i < list.length; i += 2) pages.push(list.slice(i, i + 2));
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (pages.length <= 1) return;
+    const interval = setInterval(() => setPage((p) => (p + 1) % pages.length), 4000);
+    return () => clearInterval(interval);
+  }, [pages.length]);
+
   if (!list.length) return null;
+  const current = pages[page % pages.length] || pages[0];
+
   return (
     <div
       style={{
@@ -500,24 +514,17 @@ function SponsorStrip({ sponsors }) {
       >
         Proudly Supported By
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        {list.map((s) => (
+      <div style={{ display: "flex", justifyContent: "center", gap: 14 }}>
+        {current.map((s) => (
           <a
             key={s.id}
             href={s.url || undefined}
             onClick={(e) => !s.url && e.preventDefault()}
             title={s.name}
             style={{
-              width: 72,
-              height: 72,
+              flex: 1,
+              maxWidth: 170,
+              height: 110,
               borderRadius: 16,
               background: C.line,
               border: `2px solid ${C.sliotar}66`,
@@ -526,21 +533,40 @@ function SponsorStrip({ sponsors }) {
               alignItems: "center",
               justifyContent: "center",
               overflow: "hidden",
-              flexShrink: 0,
               textDecoration: "none",
-              padding: 8,
+              padding: 4,
             }}
           >
             {s.logo ? (
-              <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+              <img src={s.logo} alt={s.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             ) : (
-              <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 10.5, color: C.ink, textAlign: "center", lineHeight: 1.15 }}>
+              <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 13, color: C.ink, textAlign: "center", lineHeight: 1.2, padding: 6 }}>
                 {s.name}
               </span>
             )}
           </a>
         ))}
       </div>
+      {pages.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
+          {pages.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setPage(i)}
+              aria-label={`Sponsors page ${i + 1}`}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                background: i === page ? C.pitch : `${C.pitch}33`,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
