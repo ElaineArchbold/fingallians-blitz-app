@@ -519,6 +519,8 @@ function SponsorStrip({ sponsors }) {
           <a
             key={s.id}
             href={s.url || undefined}
+            target={s.url ? "_blank" : undefined}
+            rel={s.url ? "noopener noreferrer" : undefined}
             onClick={(e) => !s.url && e.preventDefault()}
             title={s.name}
             style={{
@@ -1792,6 +1794,8 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
               <a
                 key={s.id}
                 href={s.url || undefined}
+                target={s.url ? "_blank" : undefined}
+                rel={s.url ? "noopener noreferrer" : undefined}
                 onClick={(e) => !s.url && e.preventDefault()}
                 style={{
                   background: "#fff",
