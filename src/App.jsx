@@ -482,44 +482,65 @@ function SponsorStrip({ sponsors }) {
     <div
       style={{
         background: "#fff",
-        padding: "8px 16px",
+        padding: "14px 16px 16px",
         borderBottom: `1px solid ${C.pitch}14`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        flexWrap: "wrap",
       }}
     >
-      {list.map((s) => (
-        <a
-          key={s.id}
-          href={s.url || undefined}
-          onClick={(e) => !s.url && e.preventDefault()}
-          title={s.name}
-          style={{
-            width: 46,
-            height: 46,
-            borderRadius: 10,
-            background: C.line,
-            border: `1.5px solid ${C.ash}88`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            flexShrink: 0,
-            textDecoration: "none",
-          }}
-        >
-          {s.logo ? (
-            <img src={s.logo} alt={s.name} style={{ maxWidth: "88%", maxHeight: "88%", objectFit: "contain" }} />
-          ) : (
-            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 9, color: C.ink, textAlign: "center", lineHeight: 1.05, padding: 2 }}>
-              {s.name}
-            </span>
-          )}
-        </a>
-      ))}
+      <div
+        style={{
+          fontFamily: "Inter, sans-serif",
+          fontSize: 10,
+          fontWeight: 700,
+          color: C.inkSoft,
+          textTransform: "uppercase",
+          letterSpacing: 1.4,
+          textAlign: "center",
+          marginBottom: 10,
+        }}
+      >
+        Proudly Supported By
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        {list.map((s) => (
+          <a
+            key={s.id}
+            href={s.url || undefined}
+            onClick={(e) => !s.url && e.preventDefault()}
+            title={s.name}
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 16,
+              background: C.line,
+              border: `2px solid ${C.sliotar}66`,
+              boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              flexShrink: 0,
+              textDecoration: "none",
+              padding: 8,
+            }}
+          >
+            {s.logo ? (
+              <img src={s.logo} alt={s.name} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+            ) : (
+              <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 10.5, color: C.ink, textAlign: "center", lineHeight: 1.15 }}>
+                {s.name}
+              </span>
+            )}
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -3113,10 +3134,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
               Renames all 6 sponsors to plain "Sponsor 1" through "Sponsor 6" — fixes any leftover "Gold/Silver/Supporter" names from before. Any logos or website links you've already added are kept untouched.
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 const next = sponsors.map((s, i) => ({ ...s, name: `Sponsor ${i + 1}` }));
                 setSponsors(next);
-                persist("sponsors", next);
+                const r = await persist("sponsors", next);
+                if (!r.ok) { setSaveError(`Sponsor save failed (${r.error}) — this change may only be showing on your screen. Try again.`); return; }
                 logAction(adminName, "Reset all sponsor names to plain Sponsor 1-6");
               }}
               style={{ width: "100%", background: "#fff", border: `1px dashed ${C.pitch}55`, borderRadius: 8, padding: 10, fontFamily: "Inter, sans-serif", color: C.pitch, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
@@ -3129,10 +3151,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             Paste a hosted image URL for each logo (e.g. from their website, or an image you've uploaded to Google Drive/Imgur with public sharing on). Leave it blank and the sponsor's name shows instead.
           </div>
           {sponsors.map((s, i) => {
-            const update = (patch) => {
+            const update = async (patch) => {
               const next = sponsors.map((x, j) => (j === i ? { ...x, ...patch } : x));
               setSponsors(next);
-              persist("sponsors", next);
+              const r = await persist("sponsors", next);
+              if (!r.ok) setSaveError(`Sponsor save failed (${r.error}) — this change may only be showing on your screen. Try again.`);
             };
             return (
               <div key={s.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
@@ -3144,10 +3167,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
                     style={{ flex: 1, border: `1px solid ${C.pitch}22`, borderRadius: 6, padding: 8, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700 }}
                   />
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const next = sponsors.filter((_, j) => j !== i);
                       setSponsors(next);
-                      persist("sponsors", next);
+                      const r = await persist("sponsors", next);
+                      if (!r.ok) { setSaveError(`Sponsor save failed (${r.error}) — this change may only be showing on your screen. Try again.`); return; }
                       logAction(adminName, `Removed sponsor: ${s.name}`);
                     }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: C.inkSoft, flexShrink: 0 }}
@@ -3176,10 +3200,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, announcements,
             );
           })}
           <button
-            onClick={() => {
+            onClick={async () => {
               const next = [...sponsors, { id: `s${Date.now()}`, name: "New sponsor", url: "", logo: "" }];
               setSponsors(next);
-              persist("sponsors", next);
+              const r = await persist("sponsors", next);
+              if (!r.ok) { setSaveError(`Sponsor save failed (${r.error}) — this change may only be showing on your screen. Try again.`); return; }
               logAction(adminName, "Added a new sponsor slot");
             }}
             style={{ width: "100%", background: "#fff", border: `1px dashed ${C.pitch}55`, borderRadius: 10, padding: 12, fontFamily: "Inter, sans-serif", color: C.pitch, fontWeight: 700, cursor: "pointer" }}
