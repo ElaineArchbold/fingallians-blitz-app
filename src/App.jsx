@@ -1605,19 +1605,6 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
           </div>
         )}
 
-        {labeled.length > 0 && (
-          <div style={{ background: "#fff", border: `1.5px solid ${C.sliotar}`, borderRadius: 12, padding: 12, marginBottom: 16, display: "flex", gap: 14, justifyContent: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 16 }}>🏆</span>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink }}>1st place in group</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 16 }}>🛡️</span>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.ink }}>2nd place in group</span>
-            </div>
-          </div>
-        )}
-
         {labeled.map((grp) => {
           const rows = computeStandings(grp.teams, matches);
           return (
@@ -1631,9 +1618,6 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
                 </div>
                 {rows.map((r, i) => {
                   const teamObj = teams.find((t) => t.id === r.id);
-                  const started = r.played > 0;
-                  const isCup = i === 0 && started;
-                  const isShield = i === 1 && started;
                   return (
                     <div
                       key={r.id}
@@ -1643,7 +1627,7 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
                         padding: "9px 8px",
                         borderTop: `1px solid ${C.pitch}14`,
                         alignItems: "center",
-                        background: isCup ? `${C.sliotar}22` : isShield ? `${C.pitch}0F` : "transparent",
+                        background: "transparent",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
@@ -1652,8 +1636,6 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
                         <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {r.name}
                         </span>
-                        {isCup && <span style={{ fontSize: 13, flexShrink: 0 }}>🏆</span>}
-                        {isShield && <span style={{ fontSize: 13, flexShrink: 0 }}>🛡️</span>}
                       </div>
                       <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 13 }}>{r.played}</div>
                       <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 13 }}>{r.won}</div>
@@ -1669,7 +1651,7 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
         })}
 
         <div style={{ marginTop: 6, fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft, lineHeight: 1.5 }}>
-          Win = 3 pts, draw = 1 pt, loss = 0. Score difference is not used as a tiebreaker — level teams are separated by head-to-head result, then a coin toss. 🏆 marks 1st place in the group and 🛡️ marks 2nd place.
+          Win = 3 pts, draw = 1 pt, loss = 0. Score difference is not used as a tiebreaker — level teams are separated by head-to-head result, then a coin toss.
         </div>
       </div>
     </div>
@@ -1688,7 +1670,7 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
     },
     {
       title: "Car Parking",
-      body: "Limited parking is available at Balheary Skatepark. Please walk or carpool if possible. Stewards will be on hand on the morning of the event to help direct traffic and pedestrians.",
+      body: "Limited parking is available at Balheary Skatepark. Please walk or carpool if possible. From the carpark, just walk across Balheary Park and over the footbridge to the club.",
       maps: [
         { label: "Open Balheary Skatepark in Google Maps", url: "https://www.google.com/maps/search/?api=1&query=Balheary+Skatepark%2C+Swords%2C+Co.+Dublin" },
       ],
@@ -1720,7 +1702,7 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
     {
       title: "Pitch Layout",
       image: `/pitch-layout.jpg?v=${CREST_VERSION}`,
-      body: "Pitch 1 is on the all-weather surface. Pitches 2 and 3 are on the main grass pitch. Please follow steward directions when moving between the clubhouse, pitches and team areas.",
+      body: "Pitch 1 is on the all-weather surface. Pitches 2 and 3 are on the main grass pitch. Please use the marked routes when moving between the clubhouse, pitches and team areas.",
     },
     {
       title: "Facilities & Medical",
@@ -1856,6 +1838,12 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
               <a
                 key={i}
                 href={m.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.open(m.url, "_blank", "noopener,noreferrer");
+                }}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
