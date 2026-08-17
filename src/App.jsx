@@ -2698,6 +2698,37 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                 {[["A Teams", aTotal], ["B Teams", bTotal], ["Total Burgers", grandTotal], ["Coaches / Buses", coachTotal]].map(([label,val]) => <div key={label} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, padding: 12, textAlign: "center" }}><div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 24, color: C.pitch }}>{val}</div><div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft }}>{label}</div></div>)}
               </div>
+
+              {Array.isArray(lunchWindows) && lunchWindows.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 3 }}>⏰ Burgers &amp; buses by sitting time</div>
+                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.5 }}>
+                    How many burgers need to be ready, and how many coaches/buses are due, at each burger-break sitting — so the kitchen and car park know what's coming and when.
+                  </div>
+                  {lunchWindows.map((w, i) => {
+                    const windowTeamRows = teamRows.filter((r) => (w.teams || []).includes(r.id));
+                    const windowBurgers = windowTeamRows.reduce((n, r) => n + r.burgers, 0);
+                    const windowBuses = windowTeamRows.reduce((n, r) => n + r.coaches, 0);
+                    return (
+                      <div key={i} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 11, marginBottom: 7 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8 }}>
+                          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 13, color: C.ink }}>{w.from}–{w.to}</div>
+                          <div style={{ display: "flex", gap: 12, fontFamily: "'League Spartan', sans-serif", fontSize: 13, fontWeight: 800, color: C.pitch, whiteSpace: "nowrap" }}>
+                            <span>🍔 {windowBurgers}</span>
+                            <span>🚌 {windowBuses}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.6 }}>
+                          {windowTeamRows.length > 0
+                            ? windowTeamRows.map((r) => `${r.club.name} ${r.grade} (${r.burgers} burgers${r.coaches ? `, ${r.coaches} bus${r.coaches === 1 ? "" : "es"}` : ""})`).join(" · ")
+                            : "No teams assigned to this sitting"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {teamRows.map((r) => <div key={r.id} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 11, marginBottom: 7 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0, marginBottom: 9 }}><TeamBadge team={r.club} size={26}/><div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: C.ink }}>{r.club.name} {r.grade}</div></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
