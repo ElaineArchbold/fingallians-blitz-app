@@ -1702,7 +1702,7 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
     {
       title: "Pitch Layout",
       image: `/pitch-layout.jpg?v=${CREST_VERSION}`,
-      body: "Pitch 1 is on the all-weather surface. Pitches 2 and 3 are on the main grass pitch. Please use the marked routes when moving between the clubhouse, pitches and team areas.",
+      body: "Pitch 1 is on the all-weather surface. Pitches 2 and 3 are on the main grass pitch. Please follow steward directions when moving between the clubhouse, pitches and team areas.",
     },
     {
       title: "Facilities & Medical",
@@ -1840,10 +1840,6 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
                 href={m.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.open(m.url, "_blank", "noopener,noreferrer");
-                }}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
