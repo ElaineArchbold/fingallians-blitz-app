@@ -36,7 +36,6 @@ const CRESTS = {
   naomheoin: `/crests/naomheoin.png?v=${CREST_VERSION}`,
   navanom: `/crests/navanom.png?v=${CREST_VERSION}`,
   ratoath: `/crests/ratoath.png?v=${CREST_VERSION}`,
-  laoisharps: `/crests/LaoisHarps.png?v=${CREST_VERSION}`,
 };
 
 // Some crest PNGs have extra whitespace/padding around the actual shield — scale
@@ -86,7 +85,6 @@ const DEFAULT_CLUBS = [
   { id: "naomheoin", name: "Naomh Eoin CLG / St. John's GAA", town: "Belfast", county: "Antrim", color: "#1D4E89", contact: "" },
   { id: "thomasdavis", name: "Thomas Davis GAA", town: "Tallaght", county: "Dublin", color: "#1C7A3E", contact: "" },
   { id: "knockbridge", name: "Knockbridge Hurling Club", town: "Knockbridge", county: "Louth", color: "#1C1C1C", contact: "" },
-  { id: "laoisharps", name: "Laois Harps", town: "Portlaoise", county: "Laois", color: "#F0B400", contact: "" },
   { id: "finian", name: "St. Finian's GAA, Swords", town: "Swords", county: "Dublin", color: "#7A1F2B", contact: "" },
   { id: "navanom", name: "Navan O'Mahony's", town: "Navan", county: "Meath", color: "#8C1A2B", contact: "" },
   { id: "ratoath", name: "Ratoath GAA", town: "Ratoath", county: "Meath", color: "#1C5FA8", contact: "" },
@@ -98,14 +96,12 @@ const DEFAULT_CLUBS = [
 // round-robin group (and finals path, Cup vs Shield) that lone team plays in.
 // Anything not listed below defaults to fielding both an A and a B team.
 //
-// Knockbridge and Laois Harps are a deliberate pair: Knockbridge is down to a
-// single team playing in the A grouping, and Laois Harps — a new club, also
-// a single team — effectively takes over the B-grouping slot Knockbridge's B
-// team used to occupy (see CLUB_GROUP_1 below). Between the two of them that's
-// still one team in each grouping, so the competition groups stay a clean 4-a-side.
+// Knockbridge is down to a single team playing in the A grouping. Laois Harps
+// previously took the B-grouping slot Knockbridge's B team used to occupy,
+// but they withdrew, so that B slot in Group 1 (see CLUB_GROUP_1 below) is
+// simply short a team now — roundRobinGroup() handles a group of 3 fine.
 const SINGLE_TEAM_CLUBS = {
   knockbridge: ["A"],
-  laoisharps: ["B"],
 };
 
 // Fixtures, results and the leaderboard all operate on the entries this produces,
@@ -127,10 +123,9 @@ const DEFAULT_TEAMS = buildTeamsFromClubs(DEFAULT_CLUBS);
 
 // The two competition groupings (feed Lunch 1 / Lunch 2 and the Cup/Shield
 // finals) are pinned explicitly by club id rather than inferred from array
-// order, since Knockbridge and Laois Harps sit in the same grouping despite
-// being different clubs. Update these two lists (not DEFAULT_CLUBS' order) if
-// the groupings ever change.
-const CLUB_GROUP_1 = ["fing", "naomheoin", "thomasdavis", "knockbridge", "laoisharps"];
+// order. Update these two lists (not DEFAULT_CLUBS' order) if the groupings
+// ever change.
+const CLUB_GROUP_1 = ["fing", "naomheoin", "thomasdavis", "knockbridge"];
 const CLUB_GROUP_2 = ["finian", "navanom", "ratoath", "brayemmets"];
 
 const DEFAULT_MATCHES = [];
@@ -2276,7 +2271,7 @@ function generateGroupFixtures(teams) {
   // Competition groups remain club-aligned, but A and B teams now have separate burger breaks.
   // Fixed grouping (not shuffled, not positional) — this specific split was
   // chosen deliberately and is pinned by CLUB_GROUP_1/CLUB_GROUP_2 above:
-  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (A team), Laois Harps (B team)
+  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (A team only — B slot vacant since Laois Harps withdrew)
   // Group 2 / Lunch 2: St Finian's, Navan O'Mahony's, Ratoath, TBC
   const clubGroup1 = CLUB_GROUP_1;
   const clubGroup2 = CLUB_GROUP_2;
@@ -2322,13 +2317,13 @@ function generateGroupFixtures(teams) {
 
   // Staggered burger breaks: four 30-minute sittings beginning at 11:30,
   // with a hard maximum of four team groups in any sitting. Travelling teams
-  // (Naomh Eoin, Navan O'Mahonys, Knockbridge and Laois Harps) are prioritised
-  // into the earliest sittings, while the fixture exclusions below keep them
-  // off the pitch during their protected break.
+  // (Naomh Eoin, Navan O'Mahonys and Knockbridge) are prioritised into the
+  // earliest sittings, while the fixture exclusions below keep them off the
+  // pitch during their protected break.
   const lunchWindows = [];
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]));
   const preferredLunchOrder = [
-    "naomheoinA", "navanomA", "knockbridgeA", "laoisharpsB",
+    "naomheoinA", "navanomA", "knockbridgeA",
     "naomheoinB", "navanomB",
   ];
   const preferredTeams = preferredLunchOrder.map((id) => byId[id]).filter(Boolean);
