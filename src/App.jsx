@@ -96,12 +96,12 @@ const DEFAULT_CLUBS = [
 // round-robin group (and finals path, Cup vs Shield) that lone team plays in.
 // Anything not listed below defaults to fielding both an A and a B team.
 //
-// Knockbridge is down to a single team playing in the A grouping. Laois Harps
-// previously took the B-grouping slot Knockbridge's B team used to occupy,
-// but they withdrew, so that B slot in Group 1 (see CLUB_GROUP_1 below) is
-// simply short a team now — roundRobinGroup() handles a group of 3 fine.
+// Knockbridge is down to a single team, playing in the B grouping (moved from
+// A — this filled the B-slot gap Laois Harps' withdrawal left, and leaves the
+// A grouping in Group 1 short a team instead, pending a hoped-for extra A-team
+// club). roundRobinGroup() handles a group of 3 fine either way.
 const SINGLE_TEAM_CLUBS = {
-  knockbridge: ["A"],
+  knockbridge: ["B"],
 };
 
 // Fixtures, results and the leaderboard all operate on the entries this produces,
@@ -2271,7 +2271,7 @@ function generateGroupFixtures(teams) {
   // Competition groups remain club-aligned, but A and B teams now have separate burger breaks.
   // Fixed grouping (not shuffled, not positional) — this specific split was
   // chosen deliberately and is pinned by CLUB_GROUP_1/CLUB_GROUP_2 above:
-  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (A team only — B slot vacant since Laois Harps withdrew)
+  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (B team only — A slot vacant, pending a hoped-for extra A-team club)
   // Group 2 / Lunch 2: St Finian's, Navan O'Mahony's, Ratoath, TBC
   const clubGroup1 = CLUB_GROUP_1;
   const clubGroup2 = CLUB_GROUP_2;
@@ -2323,7 +2323,7 @@ function generateGroupFixtures(teams) {
   const lunchWindows = [];
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]));
   const preferredLunchOrder = [
-    "naomheoinA", "navanomA", "knockbridgeA",
+    "naomheoinA", "navanomA", "knockbridgeB",
     "naomheoinB", "navanomB",
   ];
   const preferredTeams = preferredLunchOrder.map((id) => byId[id]).filter(Boolean);
