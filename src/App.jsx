@@ -2701,27 +2701,25 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
 
               {Array.isArray(lunchWindows) && lunchWindows.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 3 }}>⏰ Burgers &amp; buses by sitting time</div>
+                  <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 3 }}>⏰ Burgers by sitting time</div>
                   <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginBottom: 8, lineHeight: 1.5 }}>
-                    How many burgers need to be ready, and how many coaches/buses are due, at each burger-break sitting — so the kitchen and car park know what's coming and when.
+                    How many burgers need to be ready, and for which teams, at each burger-break sitting — so the kitchen knows what's coming and when.
                   </div>
                   {lunchWindows.map((w, i) => {
                     const windowTeamRows = teamRows.filter((r) => (w.teams || []).includes(r.id));
                     const windowBurgers = windowTeamRows.reduce((n, r) => n + r.burgers, 0);
-                    const windowBuses = windowTeamRows.reduce((n, r) => n + r.coaches, 0);
                     return (
-                      <div key={i} style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: 11, marginBottom: 7 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8 }}>
-                          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 13, color: C.ink }}>{w.from}–{w.to}</div>
-                          <div style={{ display: "flex", gap: 12, fontFamily: "'League Spartan', sans-serif", fontSize: 13, fontWeight: 800, color: C.pitch, whiteSpace: "nowrap" }}>
-                            <span>🍔 {windowBurgers}</span>
-                            <span>🚌 {windowBuses}</span>
-                          </div>
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, padding: "12px 14px", marginBottom: 7 }}>
+                        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 30, color: C.pitch, lineHeight: 1, minWidth: 52, textAlign: "center" }}>
+                          🍔 {windowBurgers}
                         </div>
-                        <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.6 }}>
-                          {windowTeamRows.length > 0
-                            ? windowTeamRows.map((r) => `${r.club.name} ${r.grade} (${r.burgers} burgers${r.coaches ? `, ${r.coaches} bus${r.coaches === 1 ? "" : "es"}` : ""})`).join(" · ")
-                            : "No teams assigned to this sitting"}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 13.5, color: C.ink, marginBottom: 3 }}>{w.from}–{w.to}</div>
+                          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                            {windowTeamRows.length > 0
+                              ? windowTeamRows.map((r) => `${r.club.name} ${r.grade} (${r.burgers})`).join(" · ")
+                              : "No teams assigned to this sitting"}
+                          </div>
                         </div>
                       </div>
                     );
