@@ -149,8 +149,8 @@ const DEFAULT_TEAMS = buildTeamsFromClubs(DEFAULT_CLUBS);
 // finals) are pinned explicitly by club id rather than inferred from array
 // order. Update these two lists (not DEFAULT_CLUBS' order) if the groupings
 // ever change.
-const CLUB_GROUP_1 = ["fing", "naomheoin", "thomasdavis", "knockbridge"];
-const CLUB_GROUP_2 = ["finian", "navanom", "ratoath"];
+const CLUB_GROUP_1 = ["fing", "naomheoin", "thomasdavis"];
+const CLUB_GROUP_2 = ["finian", "navanom", "ratoath", "knockbridge"];
 
 const DEFAULT_MATCHES = [];
 
