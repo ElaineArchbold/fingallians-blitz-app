@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Home, Users, Trophy, UtensilsCrossed, Info, MapPin, ChevronLeft, Plus, Minus, Check, Megaphone, Lock, X, Phone, Eye, EyeOff, Shield, UserCircle, Flag } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { QRCodeSVG } from "qrcode.react";
+import { Analytics } from '@vercel/analytics/react';
 
 /* ---------- Design tokens (matched to the real club crest: red / black / gold) ---------- */
 const C = {
@@ -4576,6 +4577,11 @@ export default function App() {
           </div>
         </div>
       )}
+                </div>
+        </div>
+      )}
+      <Analytics />
     </div>
   );
 }
+ 
