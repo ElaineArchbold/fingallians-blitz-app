@@ -88,7 +88,6 @@ const DEFAULT_CLUBS = [
   { id: "finian", name: "St. Finian's GAA, Swords", town: "Swords", county: "Dublin", color: "#7A1F2B", contact: "" },
   { id: "navanom", name: "Navan O'Mahony's", town: "Navan", county: "Meath", color: "#8C1A2B", contact: "" },
   { id: "ratoath", name: "Ratoath GAA", town: "Ratoath", county: "Meath", color: "#1C5FA8", contact: "" },
-  { id: "brayemmets", name: "TBC", town: "TBC", county: "TBC", color: "#888888", contact: "" },
 ];
 
 // Most clubs field an A and a B team, but a club sending a single team can be
@@ -102,6 +101,7 @@ const DEFAULT_CLUBS = [
 // club). roundRobinGroup() handles a group of 3 fine either way.
 const SINGLE_TEAM_CLUBS = {
   knockbridge: ["B"],
+  ratoath: ["A"],
 };
 
 // Keep the stable A/B ids internally because the fixture, standings and finals
@@ -120,9 +120,11 @@ function finalDisplayLabel(label) {
 function normalizeTeamDisplayName(team) {
   const grade = team.id?.endsWith("A") ? "A" : team.id?.endsWith("B") ? "B" : null;
   if (!grade) return team;
+  const clubId = team.clubId || team.id?.slice(0, -1);
+  const isSingleTeam = SINGLE_TEAM_CLUBS[clubId]?.length === 1;
   const fallbackBase = String(team.name || team.id || "Team").replace(/\s+(?:A|B|Red|Green)$/i, "");
-  const clubBase = DEFAULT_CLUBS.find((c) => c.id === team.clubId)?.name || fallbackBase;
-  return { ...team, name: `${clubBase} ${gradeDisplayName(grade)}` };
+  const clubBase = DEFAULT_CLUBS.find((c) => c.id === clubId)?.name || fallbackBase;
+  return { ...team, name: isSingleTeam ? clubBase : `${clubBase} ${gradeDisplayName(grade)}` };
 }
 
 // Fixtures, results and the leaderboard all operate on the entries this produces,
@@ -130,10 +132,11 @@ function normalizeTeamDisplayName(team) {
 function buildTeamsFromClubs(clubs) {
   return clubs.flatMap((c) => {
     const suffixes = SINGLE_TEAM_CLUBS[c.id] || ["A", "B"];
+    const isSingleTeam = suffixes.length === 1;
     return suffixes.map((suffix) => ({
       id: `${c.id}${suffix}`,
       clubId: c.id,
-      name: `${c.name} ${gradeDisplayName(suffix)}`,
+      name: isSingleTeam ? c.name : `${c.name} ${gradeDisplayName(suffix)}`,
       town: c.town,
       county: c.county,
       color: c.color,
@@ -147,7 +150,7 @@ const DEFAULT_TEAMS = buildTeamsFromClubs(DEFAULT_CLUBS);
 // order. Update these two lists (not DEFAULT_CLUBS' order) if the groupings
 // ever change.
 const CLUB_GROUP_1 = ["fing", "naomheoin", "thomasdavis", "knockbridge"];
-const CLUB_GROUP_2 = ["finian", "navanom", "ratoath", "brayemmets"];
+const CLUB_GROUP_2 = ["finian", "navanom", "ratoath"];
 
 const DEFAULT_MATCHES = [];
 
@@ -2172,13 +2175,20 @@ const roundRobin3 = (g) => [
   [[g[1], g[2]]],
 ];
 
+// Round-robin for a group of 2 (when only two clubs field a team at a given
+// grade): just a single round with one match.
+const roundRobin2 = (g) => [
+  [[g[0], g[1]]],
+];
+
 // Dispatches to the right round-robin shape for however many teams ended up
 // in a group — normally 4, but a club fielding only one team at a grade
 // (see SINGLE_TEAM_CLUBS) drops that group to 3.
 function roundRobinGroup(g) {
+  if (g.length === 2) return roundRobin2(g);
   if (g.length === 3) return roundRobin3(g);
   if (g.length === 4) return roundRobin4(g);
-  throw new Error(`roundRobinGroup: unsupported group size ${g.length} (expected 3 or 4)`);
+  throw new Error(`roundRobinGroup: unsupported group size ${g.length} (expected 2, 3 or 4)`);
 }
 
 function minutesToLabel(totalMin) {
@@ -2275,8 +2285,8 @@ function generateGroupFixtures(teams) {
   // Competition groups remain club-aligned, but A and B teams now have separate burger breaks.
   // Fixed grouping (not shuffled, not positional) — this specific split was
   // chosen deliberately and is pinned by CLUB_GROUP_1/CLUB_GROUP_2 above:
-  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (B team only — A slot vacant, pending a hoped-for extra A-team club)
-  // Group 2 / Lunch 2: St Finian's, Navan O'Mahony's, Ratoath, TBC
+  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (B team only — A slot vacant)
+  // Group 2 / Lunch 2: St Finian's, Navan O'Mahony's, Ratoath (A team only)
   const clubGroup1 = CLUB_GROUP_1;
   const clubGroup2 = CLUB_GROUP_2;
 
@@ -2285,15 +2295,16 @@ function generateGroupFixtures(teams) {
   // "Group 1" is the same 4 clubs whether you're looking at their A team or B team —
   // this is the actual COMPETITION grouping (feeds the Cup/Shield finals). A club
   // fielding only one team (see SINGLE_TEAM_CLUBS) drops its "missing" grade's
-  // group from 4 teams to 3 — roundRobinGroup() below handles either size.
+  // group from 4 teams to 3 (or 2) — roundRobinGroup() below handles any valid size.
   const groupsA = [teamsFor(clubGroup1, "A"), teamsFor(clubGroup2, "A")];
   const groupsB = [teamsFor(clubGroup1, "B"), teamsFor(clubGroup2, "B")];
 
+  // Filter out empty groups (a group with 0 or 1 teams can't play)
+  const validGroupsA = groupsA.filter((g) => g.length >= 2);
+  const validGroupsB = groupsB.filter((g) => g.length >= 2);
+
   const toMatches = (round) => round.map(([a, b]) => ({ a, b }));
-  const rrAg1 = roundRobinGroup(groupsA[0]);
-  const rrAg2 = roundRobinGroup(groupsA[1]);
-  const rrBg1 = roundRobinGroup(groupsB[0]);
-  const rrBg2 = roundRobinGroup(groupsB[1]);
+  const allRR = [...validGroupsA, ...validGroupsB].map((g) => roundRobinGroup(g));
 
   const fixtures = [];
   const lastPlayedSlot = {};
@@ -2305,21 +2316,21 @@ function generateGroupFixtures(teams) {
   const pitchCounts = Object.fromEntries(PITCHES.map((p) => [p, 0]));
 
   // Warm-up: everyone's first round only — just enough that nobody
-  // breaks for lunch before playing at least once. (Groups of 4 contribute 2
-  // matches here, groups of 3 — a club fielding a single team — contribute 1.)
-  const round1All = [...toMatches(rrAg1[0]), ...toMatches(rrAg2[0]), ...toMatches(rrBg1[0]), ...toMatches(rrBg2[0])];
+  // breaks for lunch before playing at least once.
+  const round1All = allRR.flatMap((rr) => toMatches(rr[0]));
   slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset, pitchCounts);
 
-  // Remaining pool: rounds 2 and 3 combined — deliberately NOT
-  // split, so the staggered lunch phases below have enough slack to pack well. Lunch is staggered so no more than four team groups are resting at once, keeping the other pitches active. A match that can't be played yet (because it needs a
-  // team from the currently-resting sitting) is left in the pool and picked up
-  // automatically in a later phase.
-  let remainingPool = [
-    ...toMatches(rrAg1[1]), ...toMatches(rrAg2[1]), ...toMatches(rrBg1[1]), ...toMatches(rrBg2[1]),
-    ...toMatches(rrAg1[2]), ...toMatches(rrAg2[2]), ...toMatches(rrBg1[2]), ...toMatches(rrBg2[2]),
-  ];
+  // Remaining pool: rounds 2+ combined — deliberately NOT
+  // split, so the staggered lunch phases below have enough slack to pack well.
+  // Groups with fewer rounds (e.g. a 2-team group has only 1 round) simply
+  // contribute nothing to later rounds — that's fine.
+  let remainingPool = allRR.flatMap((rr) => {
+    const later = [];
+    for (let r = 1; r < rr.length; r++) later.push(...toMatches(rr[r]));
+    return later;
+  });
 
-  // Staggered burger breaks: four 30-minute sittings beginning at 11:30,
+  // Staggered burger breaks: 30-minute sittings beginning at 11:30,
   // with a hard maximum of four team groups in any sitting. Travelling teams
   // (Naomh Eoin, Navan O'Mahonys and Knockbridge) are prioritised into the
   // earliest sittings, while the fixture exclusions below keep them off the
@@ -2599,7 +2610,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
         }
       />
       <div style={{ display: "flex", gap: 6, padding: "12px 16px 0", overflowX: "auto" }}>
-        {["orders", "fixtures", "announce", "settings"].map((t) => (
+        {["orders", "fixtures", "finals", "announce", "settings"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -2616,7 +2627,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
               cursor: "pointer",
             }}
           >
-            {t === "orders" ? "Burgers" : t === "announce" ? "Announcements" : t[0].toUpperCase() + t.slice(1)}
+            {t === "orders" ? "Burgers" : t === "announce" ? "Announcements" : t === "finals" ? "Finals" : t[0].toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -2770,7 +2781,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Creates the 24 round-robin group matches across three pitches, keeping Red teams against Red teams and Green teams against Green teams. <b>Every team receives a staggered {LUNCH_MINUTES}-minute burger break</b>. Burger sittings run from 11:30 in 30-minute blocks, with a hard maximum of four team groups on break at once. Travelling teams are prioritised into the earliest available sittings. No team is double-booked or scheduled in back-to-back slots. Shield finals are played first, followed by Cup finals and presentations. Finalists are only auto-filled when the group placing is genuinely resolved; any tie requiring a coin toss is left for an organiser to decide.
+              Creates the round-robin group matches across three pitches, keeping Red teams against Red teams and Green teams against Green teams. <b>Every team receives a staggered {LUNCH_MINUTES}-minute burger break</b>. Burger sittings run from 11:30 in 30-minute blocks, with a hard maximum of four team groups on break at once. Travelling teams are prioritised into the earliest available sittings. No team is double-booked or scheduled in back-to-back slots. Shield finals are played first, followed by Cup finals and presentations. Finalists are only auto-filled when the group placing is genuinely resolved; any tie requiring a coin toss is left for an organiser to decide.
             </div>
             <button
               onClick={async () => {
@@ -3015,6 +3026,193 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
               </div>
             );
           })}
+        </div>
+      )}
+
+
+      {tab === "finals" && (
+        <div style={{ padding: 16 }}>
+          {/* Progress */}
+          <div style={{ background: groupComplete ? "#eef9f1" : "#fff8e8", border: `1.5px solid ${groupComplete ? C.pitch : C.sliotar}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 15, color: C.ink, marginBottom: 4 }}>
+              {groupComplete ? "✓ All group matches complete" : `Group matches: ${finishedGroupCount} / ${groupMatches.length} finished`}
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>
+              {groupComplete
+                ? finalsPublished
+                  ? "Finals are currently published and visible to everyone."
+                  : "Review the standings and proposed finals below. Nothing is visible to anyone else until you publish."
+                : "Finals will be calculated once every group match is marked Finished."}
+            </div>
+          </div>
+
+          {/* Unresolved ties warning */}
+          {unresolvedTies.length > 0 && (
+            <div style={{ background: "#fff4f2", border: `1.5px solid ${C.pitch}`, borderRadius: 10, padding: 11, marginBottom: 14, fontFamily: "Inter, sans-serif", fontSize: 12, color: C.ink, lineHeight: 1.45 }}>
+              ⚠️ <b>Admin decision required:</b> {unresolvedTies.join(", ")} cannot be resolved by head-to-head alone. A coin toss is needed — manually set the finalists in the Fixtures tab.
+            </div>
+          )}
+
+          {/* Group standings */}
+          {groupMatches.length > 0 && (() => {
+            const groupedTeams = computeGroups(teams, matches);
+            let aCount = 0, bCount = 0;
+            const labeled = groupedTeams
+              .map((g) => {
+                const grade = g[0].id.endsWith("A") ? "A" : "B";
+                const num = grade === "A" ? ++aCount : ++bCount;
+                return { grade, num, teams: g };
+              })
+              .sort((x, y) => (x.grade === y.grade ? x.num - y.num : x.grade.localeCompare(y.grade)));
+
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 10 }}>Group Standings</div>
+                {labeled.map((grp) => {
+                  const rows = computeStandings(grp.teams, matches);
+                  return (
+                    <div key={`${grp.grade}${grp.num}`} style={{ marginBottom: 14 }}>
+                      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.pitch, marginBottom: 4 }}>
+                        {gradeDisplayName(grp.grade)} Group {grp.num}
+                      </div>
+                      <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, overflow: "hidden" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, padding: "7px 8px", textTransform: "uppercase" }}>
+                          <div>Team</div><div style={{ textAlign: "center" }}>P</div><div style={{ textAlign: "center" }}>W</div><div style={{ textAlign: "center" }}>D</div><div style={{ textAlign: "center" }}>L</div><div style={{ textAlign: "center" }}>Pts</div>
+                        </div>
+                        {rows.map((r, i) => {
+                          const teamObj = teams.find((t) => t.id === r.id);
+                          const isQualifier = i < 2;
+                          return (
+                            <div key={r.id} style={{ display: "grid", gridTemplateColumns: "2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", padding: "6px 8px", borderTop: `1px solid ${C.pitch}11`, background: isQualifier ? "#f0faf3" : "transparent" }}>
+                              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, fontWeight: isQualifier ? 700 : 500, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {isQualifier && <span style={{ color: i === 0 ? C.pitch : C.sliotar, marginRight: 3 }}>{i === 0 ? "🏆" : "🛡️"}</span>}
+                                {teamObj?.name || r.id}
+                              </div>
+                              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{r.played}</div>
+                              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{r.won}</div>
+                              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{r.drawn}</div>
+                              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{r.lost}</div>
+                              <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 700, color: C.ink }}>{r.points}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, marginTop: 4 }}>
+                  🏆 = Cup finalist (group winner) · 🛡️ = Shield finalist (runner-up)
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Proposed finals with pitch assignments */}
+          {groupComplete && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 14, color: C.ink, marginBottom: 10 }}>Proposed Finals</div>
+              {proposedFinals.map((m) => {
+                const a = teams.find((t) => t.id === m.teamA);
+                const b = teams.find((t) => t.id === m.teamB);
+                return (
+                  <div key={m.id} style={{ background: "#fff", border: `1.5px solid ${C.pitch}22`, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, fontWeight: 800, color: C.pitch }}>{finalDisplayLabel(m.finalLabel)}</div>
+                      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{m.time}</div>
+                    </div>
+                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
+                      {a?.name || "TBC"} <span style={{ color: C.inkSoft, fontWeight: 400 }}>v</span> {b?.name || "TBC"}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <label style={{ fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 600, color: C.inkSoft }}>Pitch:</label>
+                      <select
+                        value={m.pitch}
+                        onChange={async (e) => {
+                          const newPitch = e.target.value;
+                          const updated = matches.map((mx) => mx.id === m.id ? { ...mx, pitch: newPitch } : mx);
+                          setMatches(updated);
+                          const r = await persist("matches", updated);
+                          if (!r.ok) setSaveError(`Pitch update failed (${r.error}).`);
+                          else logAction(adminName, `Set ${finalDisplayLabel(m.finalLabel)} pitch to ${newPitch}`);
+                        }}
+                        style={{ fontFamily: "Inter, sans-serif", fontSize: 12, padding: "5px 10px", borderRadius: 6, border: `1px solid ${C.pitch}33`, background: "#fff" }}
+                      >
+                        {PITCHES.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {!finalPairingsReady(matches) && (
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, background: "#fff8e8", border: `1px solid ${C.sliotar}44`, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                  Not all pairings are resolved yet. Check for unresolved ties above or ensure all group matches are finished.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Publish / Unpublish actions */}
+          {groupComplete && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {!finalsPublished && (
+                <button
+                  disabled={!finalPairingsReady(matches)}
+                  onClick={publishFinals}
+                  style={{
+                    flex: 1,
+                    minWidth: 140,
+                    background: finalPairingsReady(matches) ? C.pitch : "#bbb",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: 13,
+                    fontFamily: "'League Spartan', sans-serif",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: finalPairingsReady(matches) ? "pointer" : "not-allowed",
+                  }}
+                >
+                  Publish Finals
+                </button>
+              )}
+              {finalsPublished && (
+                <button
+                  onClick={async () => {
+                    setFinalsPublished(false);
+                    const r = await persist("finalsPublished", false);
+                    if (!r.ok) {
+                      setFinalsPublished(true);
+                      setSaveError(`Unpublish failed (${r.error}).`);
+                      return;
+                    }
+                    logAction(adminName, "Unpublished finals — hidden from public again");
+                  }}
+                  style={{
+                    flex: 1,
+                    minWidth: 140,
+                    background: "#fff",
+                    color: C.pitch,
+                    border: `2px solid ${C.pitch}`,
+                    borderRadius: 10,
+                    padding: 13,
+                    fontFamily: "'League Spartan', sans-serif",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Unpublish Finals
+                </button>
+              )}
+            </div>
+          )}
+
+          {!groupComplete && groupMatches.length === 0 && (
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.inkSoft, textAlign: "center", padding: "30px 0" }}>
+              Generate or add fixtures first. Finals are calculated automatically once all group matches are complete.
+            </div>
+          )}
         </div>
       )}
 
