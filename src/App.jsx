@@ -92,8 +92,8 @@ const DEFAULT_CLUBS = [
 ];
 
 // Most clubs field an A and a B team, but a club sending a single team can be
-// pinned to just one grade here — the grade ("A" or "B") decides which
-// round-robin group (and finals path, Cup vs Shield) that lone team plays in.
+// pinned to just one grade here — A places the team in the Red group and B
+// places it in the Green group.
 // Anything not listed below defaults to fielding both an A and a B team.
 //
 // Knockbridge is down to a single team, playing in the B grouping (moved from
@@ -146,12 +146,8 @@ function buildTeamsFromClubs(clubs) {
 }
 const DEFAULT_TEAMS = buildTeamsFromClubs(DEFAULT_CLUBS);
 
-// The two competition groupings (feed Lunch 1 / Lunch 2 and the Cup/Shield
-// finals) are pinned explicitly by club id rather than inferred from array
-// order. Update these two lists (not DEFAULT_CLUBS' order) if the groupings
-// ever change.
-const CLUB_GROUP_1 = ["fing", "naomheoin", "thomasdavis"];
-const CLUB_GROUP_2 = ["finian", "navanom", "ratoath", "knockbridge"];
+// Red and Green are now the two competition groups. Stable A/B ids remain
+// internal only: A displays as Red and B displays as Green.
 
 const DEFAULT_MATCHES = [];
 
@@ -1495,10 +1491,11 @@ function groupIsComplete(groupTeams, matches) {
   return groupMatches.every((m) => m.status === "finished");
 }
 
-// Once BOTH of a grade's groups are complete, returns the two group winners
-// (→ Cup Final) and two runners-up (→ Shield Final). Returns null if either
-// group still has results outstanding.
-function resolvedTopTwo(groupTeams, matches) {
+// Resolve the full order of a completed colour group. Points are primary,
+// head-to-head resolves an exact two-team tie, and anything still ambiguous is
+// deliberately left unresolved for an organiser/coin-toss decision.
+function resolvedGroupOrder(groupTeams, matches) {
+  if (!groupIsComplete(groupTeams, matches)) return null;
   const rows = computeStandings(groupTeams, matches);
   const byPoints = {};
   rows.forEach((r) => { byPoints[r.points] = [...(byPoints[r.points] || []), r]; });
@@ -1510,9 +1507,6 @@ function resolvedTopTwo(groupTeams, matches) {
       ordered.push(bucket[0]);
       continue;
     }
-    // The published rule uses head-to-head, then a coin toss. For exactly two
-    // level teams we can resolve the head-to-head result safely. For 3+ tied
-    // teams, or a drawn head-to-head, the app must not guess a qualifier.
     if (bucket.length === 2) {
       const [x, y] = bucket;
       const h2h = matches.find((m) => !m.finalLabel && m.status === "finished" && ((m.teamA === x.id && m.teamB === y.id) || (m.teamA === y.id && m.teamB === x.id)));
@@ -1526,48 +1520,44 @@ function resolvedTopTwo(groupTeams, matches) {
         }
       }
     }
-    if (ordered.length < 2) return null;
-    ordered.push(...bucket);
+    return null;
   }
-  return ordered.length >= 2 ? [ordered[0].id, ordered[1].id] : null;
+  return ordered.map((r) => r.id);
 }
 
 function qualifiersForGrade(teams, matches, grade) {
-  const groupedTeams = computeGroups(teams, matches).filter((g) => g[0].id.endsWith(grade));
-  if (groupedTeams.length < 2) return null;
-  for (const g of groupedTeams) {
-    if (!groupIsComplete(g, matches)) return null;
-  }
-  const topTwos = groupedTeams.map((g) => resolvedTopTwo(g, matches));
-  if (topTwos.some((x) => !x)) return null;
+  const group = computeGroups(teams, matches).find((g) => g.length && g.every((t) => t.id.endsWith(grade)));
+  if (!group) return null;
+  const ordered = resolvedGroupOrder(group, matches);
+  if (!ordered || ordered.length < 4) return null;
   return {
-    winners: topTwos.map((x) => x[0]),
-    runnersUp: topTwos.map((x) => x[1]),
+    cup: [ordered[0], ordered[1]],
+    shield: [ordered[2], ordered[3]],
   };
 }
 
 function unresolvedQualificationTies(teams, matches) {
   const out = [];
   for (const grade of ["A", "B"]) {
-    const groups = computeGroups(teams, matches).filter((g) => g[0].id.endsWith(grade));
-    groups.forEach((g, i) => {
-      if (groupIsComplete(g, matches) && !resolvedTopTwo(g, matches)) out.push(`${gradeDisplayName(grade)} Group ${i + 1}`);
-    });
+    const group = computeGroups(teams, matches).find((g) => g.length && g.every((t) => t.id.endsWith(grade)));
+    if (group && groupIsComplete(group, matches) && !resolvedGroupOrder(group, matches)) {
+      out.push(`${gradeDisplayName(grade)} Group`);
+    }
   }
   return out;
 }
 
-// Fills in teamA/teamB for any of the 4 finals that are still blank and whose
-// qualifiers are now determinable — never overwrites a final that's already set
-// (whether auto-filled earlier or picked manually), so nothing gets clobbered.
+// Auto-fill the four hidden finals once the colour-group standings are fully
+// resolved. Existing finals are recalculated from the latest group results until
+// an organiser reviews and publishes them.
 function autoFillFinals(matchesList, teams) {
   const qualA = qualifiersForGrade(teams, matchesList, "A");
   const qualB = qualifiersForGrade(teams, matchesList, "B");
   const fillFor = {
-    "A Cup Final": qualA?.winners,
-    "A Shield Final": qualA?.runnersUp,
-    "B Cup Final": qualB?.winners,
-    "B Shield Final": qualB?.runnersUp,
+    "A Cup Final": qualA?.cup,
+    "A Shield Final": qualA?.shield,
+    "B Cup Final": qualB?.cup,
+    "B Shield Final": qualB?.shield,
   };
   return matchesList.map((m) => {
     if (!m.finalLabel || m.finalLabel === "Presentations") return m;
@@ -1614,7 +1604,7 @@ function StandingsScreen({ teams, matches, sponsors, myClubObj }) {
           return (
             <div key={`${grp.grade}${grp.num}`} style={{ marginBottom: 20 }}>
               <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 8 }}>
-                {gradeDisplayName(grp.grade)} Group {grp.num}
+                {gradeDisplayName(grp.grade)} Group
               </div>
               <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 12, overflow: "hidden" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "2.3fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10.5, fontWeight: 700, padding: "9px 8px", textTransform: "uppercase" }}>
@@ -2159,37 +2149,26 @@ const SLOT_MINUTES = 25;
 const START_HOUR = 10;
 const START_MIN = 0;
 
-// Round-robin for a group of 4 via the circle method: 3 rounds, each with 2 matches
-// that between them use all 4 teams (so they can run in parallel on different pitches).
-const roundRobin4 = (g) => [
-  [[g[0], g[1]], [g[2], g[3]]],
-  [[g[0], g[2]], [g[1], g[3]]],
-  [[g[0], g[3]], [g[1], g[2]]],
-];
-
-// Round-robin for a group of 3 (one club fielding a single team at that grade
-// drops the group from 4 to 3): 3 rounds, each with exactly 1 match — the
-// remaining team has that round free rather than sitting idle mid-fixture.
-const roundRobin3 = (g) => [
-  [[g[0], g[1]]],
-  [[g[0], g[2]]],
-  [[g[1], g[2]]],
-];
-
-// Round-robin for a group of 2 (when only two clubs field a team at a given
-// grade): just a single round with one match.
-const roundRobin2 = (g) => [
-  [[g[0], g[1]]],
-];
-
-// Dispatches to the right round-robin shape for however many teams ended up
-// in a group — normally 4, but a club fielding only one team at a grade
-// (see SINGLE_TEAM_CLUBS) drops that group to 3.
-function roundRobinGroup(g) {
-  if (g.length === 2) return roundRobin2(g);
-  if (g.length === 3) return roundRobin3(g);
-  if (g.length === 4) return roundRobin4(g);
-  throw new Error(`roundRobinGroup: unsupported group size ${g.length} (expected 2, 3 or 4)`);
+// Generic round-robin using the circle method. With the current entry list there
+// are six Red teams and six Green teams, so each colour has five rounds and every
+// team plays the other five teams in its colour exactly once.
+function roundRobinGroup(group) {
+  if (group.length < 2) return [];
+  const arr = [...group];
+  if (arr.length % 2 === 1) arr.push(null); // bye for odd-sized groups
+  const rounds = [];
+  const n = arr.length;
+  for (let r = 0; r < n - 1; r++) {
+    const round = [];
+    for (let i = 0; i < n / 2; i++) {
+      const a = arr[i];
+      const b = arr[n - 1 - i];
+      if (a && b) round.push([a, b]);
+    }
+    rounds.push(round);
+    arr.splice(1, 0, arr.pop());
+  }
+  return rounds;
 }
 
 function minutesToLabel(totalMin) {
@@ -2283,103 +2262,86 @@ function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excl
 }
 
 function generateGroupFixtures(teams) {
-  // Competition groups remain club-aligned, but A and B teams now have separate burger breaks.
-  // Fixed grouping (not shuffled, not positional) — this specific split was
-  // chosen deliberately and is pinned by CLUB_GROUP_1/CLUB_GROUP_2 above:
-  // Group 1 / Lunch 1: Fingallians, Naomh Eoin, Thomas Davis, Knockbridge (B team only — A slot vacant)
-  // Group 2 / Lunch 2: St Finian's, Navan O'Mahony's, Ratoath (A team only)
-  const clubGroup1 = CLUB_GROUP_1;
-  const clubGroup2 = CLUB_GROUP_2;
-
-  const teamsFor = (clubList, grade) => teams.filter((t) => clubList.includes(t.clubId) && t.id.endsWith(grade));
-
-  // "Group 1" is the same 4 clubs whether you're looking at their A team or B team —
-  // this is the actual COMPETITION grouping (feeds the Cup/Shield finals). A club
-  // fielding only one team (see SINGLE_TEAM_CLUBS) drops its "missing" grade's
-  // group from 4 teams to 3 (or 2) — roundRobinGroup() below handles any valid size.
-  const groupsA = [teamsFor(clubGroup1, "A"), teamsFor(clubGroup2, "A")];
-  const groupsB = [teamsFor(clubGroup1, "B"), teamsFor(clubGroup2, "B")];
-
-  // Filter out empty groups (a group with 0 or 1 teams can't play)
-  const validGroupsA = groupsA.filter((g) => g.length >= 2);
-  const validGroupsB = groupsB.filter((g) => g.length >= 2);
-
-  const toMatches = (round) => round.map(([a, b]) => ({ a, b }));
-  const allRR = [...validGroupsA, ...validGroupsB].map((g) => roundRobinGroup(g));
-
-  const fixtures = [];
-  const lastPlayedSlot = {};
-  let slotIndex = 0;
-  const extraOffset = { value: 0 };
-  // Shared across every fillSlots call below (warm-up, both lunch phases,
-  // mop-up) so pitch totals stay balanced across the whole day rather than
-  // each phase restarting its own count.
-  const pitchCounts = Object.fromEntries(PITCHES.map((p) => [p, 0]));
-
-  // Warm-up: everyone's first round only — just enough that nobody
-  // breaks for lunch before playing at least once.
-  const round1All = allRR.flatMap((rr) => toMatches(rr[0]));
-  slotIndex = fillSlots(round1All, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset, pitchCounts);
-
-  // Remaining pool: rounds 2+ combined — deliberately NOT
-  // split, so the staggered lunch phases below have enough slack to pack well.
-  // Groups with fewer rounds (e.g. a 2-team group has only 1 round) simply
-  // contribute nothing to later rounds — that's fine.
-  let remainingPool = allRR.flatMap((rr) => {
-    const later = [];
-    for (let r = 1; r < rr.length; r++) later.push(...toMatches(rr[r]));
-    return later;
-  });
-
-  // Staggered burger breaks: 30-minute sittings beginning at 11:30,
-  // with a hard maximum of four team groups in any sitting. Travelling teams
-  // (Naomh Eoin, Navan O'Mahonys and Knockbridge) are prioritised into the
-  // earliest sittings, while the fixture exclusions below keep them off the
-  // pitch during their protected break.
-  const lunchWindows = [];
+  // One Red group and one Green group. With the current entries there are six
+  // teams in each colour, giving every team five group matches (15 matches per
+  // colour, 30 group matches total). This slot plan is deliberately balanced
+  // around the existing burger-break pattern and avoids back-to-back games.
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]));
-  const preferredLunchOrder = [
-    "naomheoinA", "navanomA", "knockbridgeB",
-    "naomheoinB", "navanomB",
+  const requiredIds = [
+    "fingA", "naomheoinA", "thomasdavisA", "finianA", "navanomA", "ratoathA",
+    "fingB", "naomheoinB", "thomasdavisB", "finianB", "navanomB", "knockbridgeB",
   ];
-  const preferredTeams = preferredLunchOrder.map((id) => byId[id]).filter(Boolean);
-  const preferredIds = new Set(preferredTeams.map((t) => t.id));
-  const localTeams = teams.filter((t) => !preferredIds.has(t.id));
-  const lunchTeams = [...preferredTeams, ...localTeams];
-  const cohorts = [];
-  for (let i = 0; i < lunchTeams.length; i += 4) cohorts.push(lunchTeams.slice(i, i + 4));
-  const PHASE_MINUTES = LUNCH_MINUTES;
-  const PHASE_SLOTS = Math.max(1, Math.floor(PHASE_MINUTES / SLOT_MINUTES));
-  const PHASE_REMAINDER = PHASE_MINUTES - PHASE_SLOTS * SLOT_MINUTES;
+  const missing = requiredIds.filter((id) => !byId[id]);
+  if (missing.length) throw new Error(`Cannot generate the 6-team Red/Green schedule. Missing teams: ${missing.join(", ")}`);
 
-  // The first sitting is fixed at 11:30. If the warm-up rounds finish earlier,
-  // leave that time as breathing room rather than pulling lunch forward.
-  const FIRST_LUNCH_MINUTES = 11 * 60 + 30;
-  const currentBeforeLunch = START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value;
-  if (currentBeforeLunch < FIRST_LUNCH_MINUTES) extraOffset.value += FIRST_LUNCH_MINUTES - currentBeforeLunch;
+  const slotPlan = [
+    [0, "Pitch 1", "fingA", "navanomA"],
+    [0, "Pitch 2", "naomheoinA", "ratoathA"],
+    [0, "Pitch 3", "thomasdavisA", "finianA"],
+    [1, "Pitch 1", "fingB", "thomasdavisB"],
+    [1, "Pitch 2", "naomheoinB", "navanomB"],
+    [1, "Pitch 3", "finianB", "knockbridgeB"],
+    [2, "Pitch 2", "fingA", "finianA"],
+    [2, "Pitch 1", "naomheoinA", "thomasdavisA"],
+    [2, "Pitch 3", "navanomA", "ratoathA"],
+    [3, "Pitch 2", "fingB", "finianB"],
+    [3, "Pitch 3", "thomasdavisB", "navanomB"],
+    [4, "Pitch 1", "finianA", "ratoathA"],
+    [5, "Pitch 3", "naomheoinA", "navanomA"],
+    [5, "Pitch 1", "naomheoinB", "finianB"],
+    [5, "Pitch 2", "thomasdavisB", "knockbridgeB"],
+    [6, "Pitch 2", "fingA", "thomasdavisA"],
+    [6, "Pitch 1", "fingB", "navanomB"],
+    [7, "Pitch 3", "naomheoinB", "knockbridgeB"],
+    [8, "Pitch 3", "fingA", "naomheoinA"],
+    [8, "Pitch 1", "thomasdavisA", "ratoathA"],
+    [8, "Pitch 2", "finianA", "navanomA"],
+    [9, "Pitch 1", "fingB", "knockbridgeB"],
+    [9, "Pitch 2", "naomheoinB", "thomasdavisB"],
+    [9, "Pitch 3", "finianB", "navanomB"],
+    [10, "Pitch 3", "fingA", "ratoathA"],
+    [10, "Pitch 1", "naomheoinA", "finianA"],
+    [10, "Pitch 2", "thomasdavisA", "navanomA"],
+    [11, "Pitch 3", "fingB", "naomheoinB"],
+    [11, "Pitch 1", "thomasdavisB", "finianB"],
+    [11, "Pitch 2", "navanomB", "knockbridgeB"],
+  ];
 
-  cohorts.forEach((cohort, cohortIndex) => {
-    const phaseStartMinutes = START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value;
-    const teamIds = cohort.map((t) => t.id);
-    lunchWindows.push({
-      from: minutesToLabel(phaseStartMinutes),
-      to: minutesToLabel(phaseStartMinutes + LUNCH_MINUTES),
-      teams: teamIds,
-      clubs: [...new Set(cohort.map((t) => t.clubId))],
-      cohort: cohortIndex + 1,
-    });
+  const fixtures = slotPlan.map(([slot, pitch, teamA, teamB], index) => ({
+    id: `m${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
+    time: minutesToLabel(START_HOUR * 60 + START_MIN + slot * SLOT_MINUTES),
+    pitch,
+    teamA,
+    teamB,
+    goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
+    status: "scheduled",
+  }));
 
-    slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, PHASE_SLOTS, new Set(teamIds), extraOffset, pitchCounts);
-    extraOffset.value += PHASE_REMAINDER;
-  });
+  // Keep burger breaks close to the existing plan: three 30-minute sittings at
+  // 11:30, 12:00 and 12:30. The fixture plan above has been built around these
+  // exact windows so none of the listed teams is playing during its break.
+  const lunchWindows = [
+    {
+      from: "11:30", to: "12:00",
+      teams: ["naomheoinA", "navanomA", "knockbridgeB", "naomheoinB"],
+      clubs: ["naomheoin", "navanom", "knockbridge"], cohort: 1,
+    },
+    {
+      from: "12:00", to: "12:30",
+      teams: ["navanomB", "fingA", "fingB", "thomasdavisA"],
+      clubs: ["navanom", "fing", "thomasdavis"], cohort: 2,
+    },
+    {
+      from: "12:30", to: "13:00",
+      teams: ["thomasdavisB", "finianA", "finianB", "ratoathA"],
+      clubs: ["thomasdavis", "finian", "ratoath"], cohort: 3,
+    },
+  ];
 
-  // Mop-up: anything still unplayed (shouldn't normally be much, if anything —
-  // safety net in case a match's teams were still excluded right to the end).
-  slotIndex = fillSlots(remainingPool, fixtures, slotIndex, lastPlayedSlot, 0, null, extraOffset, pitchCounts);
-
-  // Finals — teams left blank until group placings are known.
-  // Shield finals first, then Cup finals.
-  const shieldTime = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + extraOffset.value);
+  // Finals remain completely hidden from public screens until all group games
+  // are finished, standings are resolved, and an organiser explicitly reviews
+  // and publishes them. Shield is always before Cup.
+  const shieldTime = "15:00";
   fixtures.push({
     id: `final-ashield-${Date.now()}`,
     time: shieldTime,
@@ -2399,8 +2361,7 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Shield Final",
   });
 
-  const cupMinutes = START_HOUR * 60 + START_MIN + (slotIndex + 1) * SLOT_MINUTES + extraOffset.value;
-  const cupTime = minutesToLabel(cupMinutes);
+  const cupTime = "15:25";
   fixtures.push({
     id: `final-acup-${Date.now()}`,
     time: cupTime,
@@ -2420,7 +2381,7 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Cup Final",
   });
 
-  // Bake presentation time into the actual schedule
+  const cupMinutes = 15 * 60 + 25;
   const presentationsFrom = minutesToLabel(cupMinutes + MATCH_DURATION_MIN);
   const presentationsTo = minutesToLabel(cupMinutes + MATCH_DURATION_MIN + PRESENTATION_MINUTES);
   fixtures.push({
@@ -2782,7 +2743,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Creates the round-robin group matches across three pitches, keeping Red teams against Red teams and Green teams against Green teams. <b>Every team receives a staggered {LUNCH_MINUTES}-minute burger break</b>. Burger sittings run from 11:30 in 30-minute blocks, with a hard maximum of four team groups on break at once. Travelling teams are prioritised into the earliest available sittings. No team is double-booked or scheduled in back-to-back slots. Shield finals are played first, followed by Cup finals and presentations. Finalists are only auto-filled when the group placing is genuinely resolved; any tie requiring a coin toss is left for an organiser to decide.
+              Creates one complete Red round-robin and one complete Green round-robin across three pitches, so every team plays the other five teams in its colour once. <b>Every team receives a staggered {LUNCH_MINUTES}-minute burger break</b>. Burger sittings are kept at 11:30, 12:00 and 12:30, with a maximum of four teams on break at once. Travelling teams are prioritised into the earliest available sittings. No team is double-booked or scheduled in back-to-back slots. Shield finals are played first, followed by Cup finals and presentations. Finalists are only auto-filled when the group placing is genuinely resolved; any tie requiring a coin toss is left for an organiser to decide.
             </div>
             <button
               onClick={async () => {
@@ -2805,7 +2766,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                   setSaveError(`Save to the database failed (${r1.error || r2.error || r3.error}). The schedule is showing on THIS screen only and has NOT been saved — reloading or checking on another device will show the old data. Please try again, and if it keeps failing, this needs checking on the Vercel/Turso side.`);
                   return;
                 }
-                logAction(adminName, `Auto-generated the full schedule with four staggered 30-minute burger sittings from 11:30 (maximum four team groups at once; travelling teams prioritised early) (replaced ${matches.length} existing fixture${matches.length === 1 ? "" : "s"})`);
+                logAction(adminName, `Auto-generated the full schedule with staggered 30-minute burger sittings from 11:30 (maximum four teams at once; travelling teams prioritised early) (replaced ${matches.length} existing fixture${matches.length === 1 ? "" : "s"})`);
               }}
               style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
@@ -3074,7 +3035,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                   return (
                     <div key={`${grp.grade}${grp.num}`} style={{ marginBottom: 14 }}>
                       <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 700, color: C.pitch, marginBottom: 4 }}>
-                        {gradeDisplayName(grp.grade)} Group {grp.num}
+                        {gradeDisplayName(grp.grade)} Group
                       </div>
                       <div style={{ background: "#fff", border: `1px solid ${C.pitch}22`, borderRadius: 10, overflow: "hidden" }}>
                         <div style={{ display: "grid", gridTemplateColumns: "2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", background: C.turf, color: C.line, fontFamily: "Inter, sans-serif", fontSize: 10, fontWeight: 700, padding: "7px 8px", textTransform: "uppercase" }}>
@@ -3082,11 +3043,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                         </div>
                         {rows.map((r, i) => {
                           const teamObj = teams.find((t) => t.id === r.id);
-                          const isQualifier = i < 2;
+                          const isQualifier = i < 4;
                           return (
                             <div key={r.id} style={{ display: "grid", gridTemplateColumns: "2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", padding: "6px 8px", borderTop: `1px solid ${C.pitch}11`, background: isQualifier ? "#f0faf3" : "transparent" }}>
                               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, fontWeight: isQualifier ? 700 : 500, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {isQualifier && <span style={{ color: i === 0 ? C.pitch : C.sliotar, marginRight: 3 }}>{i === 0 ? "🏆" : "🛡️"}</span>}
+                                {isQualifier && <span style={{ color: i < 2 ? C.pitch : C.sliotar, marginRight: 3 }}>{i < 2 ? "🏆" : "🛡️"}</span>}
                                 {teamObj?.name || r.id}
                               </div>
                               <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{r.played}</div>
@@ -3102,7 +3063,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                   );
                 })}
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, marginTop: 4 }}>
-                  🏆 = Cup finalist (group winner) · 🛡️ = Shield finalist (runner-up)
+                  🏆 = Cup Final (1st & 2nd) · 🛡️ = Shield Final (3rd & 4th)
                 </div>
               </div>
             );
