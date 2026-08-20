@@ -92,8 +92,8 @@ const DEFAULT_CLUBS = [
 ];
 
 // Most clubs field an A and a B team, but a club sending a single team can be
-// pinned to just one grade here — A places the team in the Red group and B
-// places it in the Green group.
+// pinned to just one grade here — the grade ("A" or "B") decides which
+// round-robin group (and finals path, Cup vs Shield) that lone team plays in.
 // Anything not listed below defaults to fielding both an A and a B team.
 //
 // Knockbridge is down to a single team, playing in the B grouping (moved from
@@ -145,9 +145,6 @@ function buildTeamsFromClubs(clubs) {
   });
 }
 const DEFAULT_TEAMS = buildTeamsFromClubs(DEFAULT_CLUBS);
-
-// Red and Green are now the two competition groups. Stable A/B ids remain
-// internal only: A displays as Red and B displays as Green.
 
 const DEFAULT_MATCHES = [];
 
@@ -1003,7 +1000,7 @@ function MatchRow({ match, teamById }) {
           {finalIcon(match.finalLabel)} {finalDisplayLabel(match.finalLabel)}
         </div>
         <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginTop: 2 }}>
-          Teams to be confirmed — group {isShield ? "runners-up" : "winners"}
+          Teams to be confirmed after the final standings are reviewed
         </div>
       </div>
     );
@@ -1482,31 +1479,31 @@ function computeGroups(teams, matches) {
   return Object.values(buckets).filter((g) => g.length > 1);
 }
 
-// A group of 4 is "complete" once all 6 of its round-robin matches are finished.
+// A group is complete once every round-robin pairing in that group is finished.
 function groupIsComplete(groupTeams, matches) {
   const ids = groupTeams.map((t) => t.id);
   const groupMatches = matches.filter((m) => !m.finalLabel && ids.includes(m.teamA) && ids.includes(m.teamB));
-  const expected = (groupTeams.length * (groupTeams.length - 1)) / 2; // 6 for a group of 4
+  const expected = (groupTeams.length * (groupTeams.length - 1)) / 2; // 15 for a group of 6
   if (groupMatches.length < expected) return false;
   return groupMatches.every((m) => m.status === "finished");
 }
 
-// Resolve the full order of a completed colour group. Points are primary,
-// head-to-head resolves an exact two-team tie, and anything still ambiguous is
-// deliberately left unresolved for an organiser/coin-toss decision.
 function resolvedGroupOrder(groupTeams, matches) {
-  if (!groupIsComplete(groupTeams, matches)) return null;
   const rows = computeStandings(groupTeams, matches);
   const byPoints = {};
   rows.forEach((r) => { byPoints[r.points] = [...(byPoints[r.points] || []), r]; });
   const pointLevels = Object.keys(byPoints).map(Number).sort((a, b) => b - a);
   const ordered = [];
+
   for (const pts of pointLevels) {
     const bucket = byPoints[pts];
     if (bucket.length === 1) {
       ordered.push(bucket[0]);
       continue;
     }
+
+    // Published tiebreak: head-to-head, then coin toss. Exactly two level teams
+    // can be resolved automatically if their head-to-head game was not a draw.
     if (bucket.length === 2) {
       const [x, y] = bucket;
       const h2h = matches.find((m) => !m.finalLabel && m.status === "finished" && ((m.teamA === x.id && m.teamB === y.id) || (m.teamA === y.id && m.teamB === x.id)));
@@ -1520,26 +1517,29 @@ function resolvedGroupOrder(groupTeams, matches) {
         }
       }
     }
+
+    // Three-or-more teams level, or a drawn head-to-head: organiser coin toss / manual order.
     return null;
   }
+
   return ordered.map((r) => r.id);
 }
 
 function qualifiersForGrade(teams, matches, grade) {
-  const group = computeGroups(teams, matches).find((g) => g.length && g.every((t) => t.id.endsWith(grade)));
-  if (!group) return null;
-  const ordered = resolvedGroupOrder(group, matches);
-  if (!ordered || ordered.length < 4) return null;
+  const group = computeGroups(teams, matches).find((g) => g[0].id.endsWith(grade));
+  if (!group || !groupIsComplete(group, matches)) return null;
+  const order = resolvedGroupOrder(group, matches);
+  if (!order || order.length < 4) return null;
   return {
-    cup: [ordered[0], ordered[1]],
-    shield: [ordered[2], ordered[3]],
+    cup: [order[0], order[1]],       // 1st v 2nd
+    shield: [order[2], order[3]],    // 3rd v 4th
   };
 }
 
 function unresolvedQualificationTies(teams, matches) {
   const out = [];
   for (const grade of ["A", "B"]) {
-    const group = computeGroups(teams, matches).find((g) => g.length && g.every((t) => t.id.endsWith(grade)));
+    const group = computeGroups(teams, matches).find((g) => g[0].id.endsWith(grade));
     if (group && groupIsComplete(group, matches) && !resolvedGroupOrder(group, matches)) {
       out.push(`${gradeDisplayName(grade)} Group`);
     }
@@ -1547,9 +1547,8 @@ function unresolvedQualificationTies(teams, matches) {
   return out;
 }
 
-// Auto-fill the four hidden finals once the colour-group standings are fully
-// resolved. Existing finals are recalculated from the latest group results until
-// an organiser reviews and publishes them.
+// Finals stay hidden until an organiser reviews and publishes them. Auto-fill only
+// proposes pairings from the completed standings; it never publishes them.
 function autoFillFinals(matchesList, teams) {
   const qualA = qualifiersForGrade(teams, matchesList, "A");
   const qualB = qualifiersForGrade(teams, matchesList, "B");
@@ -1706,7 +1705,8 @@ function InfoScreen({ sponsors, announcements, myClubObj, onMentorClick }) {
       title: "Playing Rules",
       list: [
         "Teams: minimum 11, maximum 13 players on the field, with unlimited substitutions and a maximum panel size of 15.",
-        "Matches: 10 minutes per half, 20 minutes total, with 3 minutes for half-time.",
+        "MATCH FORMAT: 9 minutes each half (18 minutes total). There is NO half-time break — teams change ends immediately and play restarts.",
+        "CHANGEOVER: 2 minutes between fixtures. Teams due in the next slot must be pitch-side, lined up and ready before the previous game finishes.",
         "3 points for a win, 1 for a draw, 0 for a loss. 65s will be taken.",
         "On taking possession a player may take 4 steps, max 8 steps solo running, then 4 steps to play away — 16 steps maximum from possession to striking the sliotar.",
         "The player who is fouled takes the free. The player closest to the line ball takes the sideline cut.",
@@ -2143,33 +2143,14 @@ function TeamScreen({ teams, clubs, matches, sponsors, myClub, myClubName, onOpe
   );
 }
 
-/* ---------- Fixture generator: A teams and B teams grouped separately, 3 pitches, plus finals ---------- */
+/* ---------- Fixture generator: one Red group + one Green group, 3 pitches, hidden finals ---------- */
 const PITCHES = ["Pitch 1", "Pitch 2", "Pitch 3"];
-const SLOT_MINUTES = 25;
+const SLOT_MINUTES = 20; // 18 minutes play + 2 minutes changeover
 const START_HOUR = 10;
 const START_MIN = 0;
-
-// Generic round-robin using the circle method. With the current entry list there
-// are six Red teams and six Green teams, so each colour has five rounds and every
-// team plays the other five teams in its colour exactly once.
-function roundRobinGroup(group) {
-  if (group.length < 2) return [];
-  const arr = [...group];
-  if (arr.length % 2 === 1) arr.push(null); // bye for odd-sized groups
-  const rounds = [];
-  const n = arr.length;
-  for (let r = 0; r < n - 1; r++) {
-    const round = [];
-    for (let i = 0; i < n / 2; i++) {
-      const a = arr[i];
-      const b = arr[n - 1 - i];
-      if (a && b) round.push([a, b]);
-    }
-    rounds.push(round);
-    arr.splice(1, 0, arr.pop());
-  }
-  return rounds;
-}
+const LUNCH_MINUTES = 30;
+const MATCH_DURATION_MIN = 18; // 9 minutes each half, no half-time break
+const PRESENTATION_MINUTES = 10;
 
 function minutesToLabel(totalMin) {
   const hh = Math.floor(totalMin / 60);
@@ -2177,139 +2158,139 @@ function minutesToLabel(totalMin) {
   return `${hh}:${String(mm).padStart(2, "0")}`;
 }
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+function timeToMinutes(label) {
+  const [h, m] = String(label || "0:00").split(":").map(Number);
+  return h * 60 + m;
 }
 
-const LUNCH_MINUTES = 30;
-const MATCH_DURATION_MIN = 23; // 20 min play + 3 min half-time, per the playing rules
-const PRESENTATION_MINUTES = 15; // buffer for trophies/presentations after the last final
-const LUNCH_MIN_SLOTS = Math.max(1, Math.floor(LUNCH_MINUTES / SLOT_MINUTES));
-const LUNCH_REMAINDER_MINUTES = LUNCH_MINUTES - LUNCH_MIN_SLOTS * SLOT_MINUTES; // the bit that doesn't fit a whole slot
+// This is deliberately deterministic so the in-app schedule, printed/admin table
+// and exported CSV always match exactly on the day. The 12 current teams form one
+// Red group of 6 and one Green group of 6; every team plays the other five teams
+// in its colour group once. No team is scheduled in consecutive 20-minute slots.
+const GROUP_FIXTURE_TEMPLATE = [
+  ["10:00", "Pitch 1", "fingB", "naomheoinB"],
+  ["10:00", "Pitch 2", "thomasdavisB", "finianB"],
+  ["10:00", "Pitch 3", "navanomB", "knockbridgeB"],
 
-// Fills pitches for consecutive slots from the given pool, respecting the absolute
-// rest-gap rule (never back-to-back). Runs for at least `minSlots` slots even if the
-// pool empties sooner, so a lunch block can be padded to a real fixed duration.
-// Mutates `pool` and `lastPlayedSlot`; returns the next free slot index.
-function fillSlots(pool, fixtures, startSlot, lastPlayedSlot, minSlots = 0, excludeTeamIds = null, extraOffsetRef = null, pitchCounts = null) {
-  let slotIndex = startSlot;
-  let slotsUsed = 0;
-  let guard = 0;
-  const offset = extraOffsetRef ? extraOffsetRef.value : 0;
-  // Shared across every fillSlots call for the whole day (passed in by the
-  // caller) so pitch balance is tracked globally, not reset each phase.
-  const counts = pitchCounts || Object.fromEntries(PITCHES.map((p) => [p, 0]));
-  while (guard < 200) {
-    guard++;
-    const used = new Set();
-    const slotMatches = [];
-    for (let i = 0; i < pool.length && slotMatches.length < PITCHES.length; i++) {
-      const m = pool[i];
-      const aRested = lastPlayedSlot[m.a.id] === undefined || lastPlayedSlot[m.a.id] < slotIndex - 1;
-      const bRested = lastPlayedSlot[m.b.id] === undefined || lastPlayedSlot[m.b.id] < slotIndex - 1;
-      const excluded = excludeTeamIds && (excludeTeamIds.has(m.a.id) || excludeTeamIds.has(m.b.id));
-      if (!excluded && !used.has(m.a.id) && !used.has(m.b.id) && aRested && bRested) {
-        slotMatches.push(m);
-        used.add(m.a.id);
-        used.add(m.b.id);
-        pool.splice(i, 1);
-        i--;
+  ["10:20", "Pitch 1", "fingA", "navanomA"],
+  ["10:20", "Pitch 2", "naomheoinA", "finianA"],
+  ["10:20", "Pitch 3", "thomasdavisA", "ratoathA"],
+
+  ["10:40", "Pitch 2", "fingB", "navanomB"],
+  ["10:40", "Pitch 3", "naomheoinB", "finianB"],
+  ["10:40", "Pitch 1", "thomasdavisB", "knockbridgeB"],
+
+  ["11:00", "Pitch 3", "fingA", "naomheoinA"],
+  ["11:00", "Pitch 2", "thomasdavisA", "navanomA"],
+  ["11:00", "Pitch 1", "finianA", "ratoathA"],
+
+  ["11:20", "Pitch 1", "fingB", "finianB"],
+  ["11:20", "Pitch 3", "thomasdavisB", "navanomB"],
+
+  ["11:40", "Pitch 2", "fingA", "ratoathA"],
+  ["11:40", "Pitch 1", "thomasdavisA", "finianA"],
+
+  ["12:00", "Pitch 3", "naomheoinA", "navanomA"],
+  ["12:00", "Pitch 2", "fingB", "knockbridgeB"],
+  ["12:00", "Pitch 1", "naomheoinB", "thomasdavisB"],
+
+  // 12:20 is intentionally left clear as a breathing-room / overrun slot.
+
+  ["12:40", "Pitch 2", "navanomA", "ratoathA"],
+  ["12:40", "Pitch 3", "naomheoinB", "knockbridgeB"],
+  ["12:40", "Pitch 1", "finianB", "navanomB"],
+
+  ["13:00", "Pitch 3", "fingA", "finianA"],
+  ["13:00", "Pitch 2", "naomheoinA", "thomasdavisA"],
+  ["13:00", "Pitch 1", "fingB", "thomasdavisB"],
+
+  ["13:20", "Pitch 2", "naomheoinB", "navanomB"],
+  ["13:20", "Pitch 3", "finianB", "knockbridgeB"],
+
+  ["13:40", "Pitch 1", "fingA", "thomasdavisA"],
+  ["13:40", "Pitch 3", "naomheoinA", "ratoathA"],
+  ["13:40", "Pitch 2", "finianA", "navanomA"],
+];
+
+const FIXED_LUNCH_WINDOWS = [
+  {
+    from: "11:30", to: "12:00",
+    teams: ["naomheoinA", "navanomA", "knockbridgeB", "naomheoinB"],
+    cohort: 1,
+  },
+  {
+    from: "12:00", to: "12:30",
+    teams: ["navanomB", "finianA", "finianB", "ratoathA"],
+    cohort: 2,
+  },
+  {
+    from: "12:30", to: "13:00",
+    teams: ["fingA", "fingB", "thomasdavisA", "thomasdavisB"],
+    cohort: 3,
+  },
+];
+
+function validateGeneratedSchedule(fixtures, teams, lunchWindows) {
+  const groupMatches = fixtures.filter((m) => !m.finalLabel);
+  const existingIds = new Set(teams.map((t) => t.id));
+
+  // Every current team should have five group games.
+  for (const team of teams) {
+    const count = groupMatches.filter((m) => m.teamA === team.id || m.teamB === team.id).length;
+    if (count !== 5) throw new Error(`${team.name} has ${count} group matches; expected 5.`);
+  }
+
+  // Red only plays Red; Green only plays Green; no duplicate pairings.
+  const seenPairs = new Set();
+  for (const m of groupMatches) {
+    if (!existingIds.has(m.teamA) || !existingIds.has(m.teamB)) throw new Error(`Unknown team in fixture ${m.teamA} v ${m.teamB}`);
+    if (m.teamA.slice(-1) !== m.teamB.slice(-1)) throw new Error(`Cross-colour fixture detected: ${m.teamA} v ${m.teamB}`);
+    const key = [m.teamA, m.teamB].sort().join("|");
+    if (seenPairs.has(key)) throw new Error(`Duplicate fixture detected: ${key}`);
+    seenPairs.add(key);
+  }
+
+  // No team can be in consecutive 20-minute slots.
+  for (const team of teams) {
+    const times = groupMatches
+      .filter((m) => m.teamA === team.id || m.teamB === team.id)
+      .map((m) => timeToMinutes(m.time))
+      .sort((a, b) => a - b);
+    for (let i = 1; i < times.length; i++) {
+      if (times[i] - times[i - 1] < SLOT_MINUTES * 2) {
+        throw new Error(`${team.name} has back-to-back fixtures.`);
       }
     }
-    if (slotMatches.length > 0) {
-      const timeLabel = minutesToLabel(START_HOUR * 60 + START_MIN + slotIndex * SLOT_MINUTES + offset);
-      // Assign pitches by whichever have hosted the FEWEST matches so far, rather
-      // than by fixed position in this slot's list. A slot with fewer than 3
-      // eligible matches (e.g. during a lunch exclusion) would otherwise always
-      // shortchange the same pitch — this keeps the running total balanced
-      // across the whole day instead.
-      const pitchOrder = [...PITCHES].sort((p1, p2) => counts[p1] - counts[p2]);
-      slotMatches.forEach((m, pi) => {
-        const pitch = pitchOrder[pi];
-        counts[pitch]++;
-        lastPlayedSlot[m.a.id] = slotIndex;
-        lastPlayedSlot[m.b.id] = slotIndex;
-        fixtures.push({
-          id: `m${Date.now()}_${fixtures.length}_${Math.random().toString(36).slice(2, 6)}`,
-          time: timeLabel,
-          pitch,
-          teamA: m.a.id,
-          teamB: m.b.id,
-          goalsA: 0, pointsA: 0, goalsB: 0, pointsB: 0,
-          status: "scheduled",
-        });
-      });
-    }
-    slotIndex++;
-    slotsUsed++;
+  }
 
-    if (excludeTeamIds) {
-      // Exclusion phase (a lunch window): run for exactly minSlots and stop.
-      // Whatever's left in the pool is deliberately deferred to a later phase —
-      // it is NOT this phase's job to finish, so don't keep looping over it.
-      if (slotsUsed >= minSlots) break;
-    } else {
-      // Normal phase (no exclusions): finish once the pool is actually empty.
-      if (pool.length === 0 && slotsUsed >= minSlots) break;
+  // Lunch is protected for the full 30 minutes; an 18-minute game may not overlap it.
+  for (const w of lunchWindows) {
+    const from = timeToMinutes(w.from);
+    const to = timeToMinutes(w.to);
+    for (const teamId of w.teams || []) {
+      const clashes = groupMatches.filter((m) => {
+        if (m.teamA !== teamId && m.teamB !== teamId) return false;
+        const start = timeToMinutes(m.time);
+        const end = start + MATCH_DURATION_MIN;
+        return start < to && end > from;
+      });
+      if (clashes.length) throw new Error(`Lunch clash for ${teamId} at ${w.from}.`);
     }
   }
-  return slotIndex;
 }
 
 function generateGroupFixtures(teams) {
-  // One Red group and one Green group. With the current entries there are six
-  // teams in each colour, giving every team five group matches (15 matches per
-  // colour, 30 group matches total). This slot plan is deliberately balanced
-  // around the existing burger-break pattern and avoids back-to-back games.
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]));
-  const requiredIds = [
-    "fingA", "naomheoinA", "thomasdavisA", "finianA", "navanomA", "ratoathA",
-    "fingB", "naomheoinB", "thomasdavisB", "finianB", "navanomB", "knockbridgeB",
-  ];
+  const requiredIds = [...new Set(GROUP_FIXTURE_TEMPLATE.flatMap((r) => [r[2], r[3]]))];
   const missing = requiredIds.filter((id) => !byId[id]);
-  if (missing.length) throw new Error(`Cannot generate the 6-team Red/Green schedule. Missing teams: ${missing.join(", ")}`);
+  if (missing.length) {
+    throw new Error(`Cannot generate this event schedule because these teams are missing: ${missing.join(", ")}`);
+  }
 
-  const slotPlan = [
-    [0, "Pitch 1", "fingA", "navanomA"],
-    [0, "Pitch 2", "naomheoinA", "ratoathA"],
-    [0, "Pitch 3", "thomasdavisA", "finianA"],
-    [1, "Pitch 1", "fingB", "thomasdavisB"],
-    [1, "Pitch 2", "naomheoinB", "navanomB"],
-    [1, "Pitch 3", "finianB", "knockbridgeB"],
-    [2, "Pitch 2", "fingA", "finianA"],
-    [2, "Pitch 1", "naomheoinA", "thomasdavisA"],
-    [2, "Pitch 3", "navanomA", "ratoathA"],
-    [3, "Pitch 2", "fingB", "finianB"],
-    [3, "Pitch 3", "thomasdavisB", "navanomB"],
-    [4, "Pitch 1", "finianA", "ratoathA"],
-    [5, "Pitch 3", "naomheoinA", "navanomA"],
-    [5, "Pitch 1", "naomheoinB", "finianB"],
-    [5, "Pitch 2", "thomasdavisB", "knockbridgeB"],
-    [6, "Pitch 2", "fingA", "thomasdavisA"],
-    [6, "Pitch 1", "fingB", "navanomB"],
-    [7, "Pitch 3", "naomheoinB", "knockbridgeB"],
-    [8, "Pitch 3", "fingA", "naomheoinA"],
-    [8, "Pitch 1", "thomasdavisA", "ratoathA"],
-    [8, "Pitch 2", "finianA", "navanomA"],
-    [9, "Pitch 1", "fingB", "knockbridgeB"],
-    [9, "Pitch 2", "naomheoinB", "thomasdavisB"],
-    [9, "Pitch 3", "finianB", "navanomB"],
-    [10, "Pitch 3", "fingA", "ratoathA"],
-    [10, "Pitch 1", "naomheoinA", "finianA"],
-    [10, "Pitch 2", "thomasdavisA", "navanomA"],
-    [11, "Pitch 3", "fingB", "naomheoinB"],
-    [11, "Pitch 1", "thomasdavisB", "finianB"],
-    [11, "Pitch 2", "navanomB", "knockbridgeB"],
-  ];
-
-  const fixtures = slotPlan.map(([slot, pitch, teamA, teamB], index) => ({
-    id: `m${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
-    time: minutesToLabel(START_HOUR * 60 + START_MIN + slot * SLOT_MINUTES),
+  const now = Date.now();
+  const fixtures = GROUP_FIXTURE_TEMPLATE.map(([time, pitch, teamA, teamB], i) => ({
+    id: `m${now}_${i}`,
+    time,
     pitch,
     teamA,
     teamB,
@@ -2317,33 +2298,16 @@ function generateGroupFixtures(teams) {
     status: "scheduled",
   }));
 
-  // Keep burger breaks close to the existing plan: three 30-minute sittings at
-  // 11:30, 12:00 and 12:30. The fixture plan above has been built around these
-  // exact windows so none of the listed teams is playing during its break.
-  const lunchWindows = [
-    {
-      from: "11:30", to: "12:00",
-      teams: ["naomheoinA", "navanomA", "knockbridgeB", "naomheoinB"],
-      clubs: ["naomheoin", "navanom", "knockbridge"], cohort: 1,
-    },
-    {
-      from: "12:00", to: "12:30",
-      teams: ["navanomB", "fingA", "fingB", "thomasdavisA"],
-      clubs: ["navanom", "fing", "thomasdavis"], cohort: 2,
-    },
-    {
-      from: "12:30", to: "13:00",
-      teams: ["thomasdavisB", "finianA", "finianB", "ratoathA"],
-      clubs: ["thomasdavis", "finian", "ratoath"], cohort: 3,
-    },
-  ];
+  const lunchWindows = FIXED_LUNCH_WINDOWS.map((w) => ({
+    ...w,
+    clubs: [...new Set((w.teams || []).map((id) => byId[id]?.clubId).filter(Boolean))],
+  }));
 
-  // Finals remain completely hidden from public screens until all group games
-  // are finished, standings are resolved, and an organiser explicitly reviews
-  // and publishes them. Shield is always before Cup.
-  const shieldTime = "15:00";
+  // Group stage ends at 13:58. This leaves 12 minutes to confirm scores/standings
+  // and review the hidden finals before the Shield finals begin.
+  const shieldTime = "14:10";
   fixtures.push({
-    id: `final-ashield-${Date.now()}`,
+    id: `final-ashield-${now}`,
     time: shieldTime,
     pitch: "Pitch 2",
     teamA: "", teamB: "",
@@ -2352,7 +2316,7 @@ function generateGroupFixtures(teams) {
     finalLabel: "A Shield Final",
   });
   fixtures.push({
-    id: `final-bshield-${Date.now()}`,
+    id: `final-bshield-${now}`,
     time: shieldTime,
     pitch: "Pitch 3",
     teamA: "", teamB: "",
@@ -2361,9 +2325,9 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Shield Final",
   });
 
-  const cupTime = "15:25";
+  const cupTime = "14:30";
   fixtures.push({
-    id: `final-acup-${Date.now()}`,
+    id: `final-acup-${now}`,
     time: cupTime,
     pitch: "Pitch 2",
     teamA: "", teamB: "",
@@ -2372,7 +2336,7 @@ function generateGroupFixtures(teams) {
     finalLabel: "A Cup Final",
   });
   fixtures.push({
-    id: `final-bcup-${Date.now()}`,
+    id: `final-bcup-${now}`,
     time: cupTime,
     pitch: "Pitch 3",
     teamA: "", teamB: "",
@@ -2381,11 +2345,10 @@ function generateGroupFixtures(teams) {
     finalLabel: "B Cup Final",
   });
 
-  const cupMinutes = 15 * 60 + 25;
-  const presentationsFrom = minutesToLabel(cupMinutes + MATCH_DURATION_MIN);
-  const presentationsTo = minutesToLabel(cupMinutes + MATCH_DURATION_MIN + PRESENTATION_MINUTES);
+  const presentationsFrom = "14:50";
+  const presentationsTo = "15:00";
   fixtures.push({
-    id: `presentations-${Date.now()}`,
+    id: `presentations-${now}`,
     time: presentationsFrom,
     pitch: "",
     teamA: "", teamB: "",
@@ -2394,7 +2357,93 @@ function generateGroupFixtures(teams) {
     finalLabel: "Presentations",
   });
 
+  validateGeneratedSchedule(fixtures, teams, lunchWindows);
   return { fixtures, lunchWindows, presentations: { from: presentationsFrom, to: presentationsTo } };
+}
+
+function AdminFixtureTable({ matches, teams, lunchWindows }) {
+  const teamName = (id) => teams.find((t) => t.id === id)?.name || id || "TBC";
+  const pitchNumber = (pitch) => Number((String(pitch).match(/\d+/) || [99])[0]);
+  const rows = [...matches]
+    .filter((m) => m.finalLabel !== "Presentations")
+    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time) || pitchNumber(a.pitch) - pitchNumber(b.pitch));
+
+  const downloadCsv = () => {
+    const csvRows = [
+      ["Time", "Pitch", "Stage", "Team A", "Score A", "Team B", "Score B", "Status"],
+      ...rows.map((m) => [
+        m.time,
+        m.pitch,
+        m.finalLabel ? finalDisplayLabel(m.finalLabel) : (m.teamA?.endsWith("A") ? "Red Group" : "Green Group"),
+        teamName(m.teamA),
+        m.status === "scheduled" ? "" : scoreLabel(m.goalsA, m.pointsA),
+        teamName(m.teamB),
+        m.status === "scheduled" ? "" : scoreLabel(m.goalsB, m.pointsB),
+        m.status,
+      ]),
+    ];
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const blob = new Blob([csvRows.map((r) => r.map(esc).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "fingallians-blitz-fixtures.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${C.pitch}33`, borderRadius: 12, padding: 12, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+        <div>
+          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>On-the-day fixture table</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.inkSoft, marginTop: 2 }}>This table is built directly from the generated fixtures, so it always matches the app.</div>
+        </div>
+        <button disabled={rows.length === 0} onClick={downloadCsv} style={{ background: rows.length === 0 ? "#b9b2ad" : C.turf, color: "#fff", border: "none", borderRadius: 8, padding: "8px 10px", fontFamily: "Inter, sans-serif", fontSize: 11.5, fontWeight: 700, cursor: rows.length === 0 ? "not-allowed" : "pointer", flexShrink: 0 }}>
+          Export CSV
+        </button>
+      </div>
+
+      <div style={{ overflowX: "auto", border: `1px solid ${C.pitch}22`, borderRadius: 9 }}>
+        <table style={{ width: "100%", minWidth: 760, borderCollapse: "collapse", fontFamily: "Inter, sans-serif", fontSize: 11.5 }}>
+          <thead>
+            <tr style={{ background: C.turf, color: "#fff", textAlign: "left" }}>
+              {['Time', 'Pitch', 'Stage', 'Team A', 'Score A', 'Team B', 'Score B', 'Status'].map((h) => <th key={h} style={{ padding: "8px 7px", whiteSpace: "nowrap" }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ padding: "18px 10px", textAlign: "center", color: C.inkSoft, fontStyle: "italic" }}>
+                  No fixtures generated yet. Use “Generate schedule” above and this table will populate automatically.
+                </td>
+              </tr>
+            )}
+            {rows.map((m) => (
+              <tr key={m.id} style={{ borderTop: `1px solid ${C.pitch}14` }}>
+                <td style={{ padding: "7px", fontWeight: 800 }}>{m.time}</td>
+                <td style={{ padding: "7px" }}>{m.pitch}</td>
+                <td style={{ padding: "7px", fontWeight: 700 }}>{m.finalLabel ? finalDisplayLabel(m.finalLabel) : (m.teamA?.endsWith("A") ? "Red Group" : "Green Group")}</td>
+                <td style={{ padding: "7px" }}>{teamName(m.teamA)}</td>
+                <td style={{ padding: "7px", textAlign: "center" }}>{m.status === "scheduled" ? "" : scoreLabel(m.goalsA, m.pointsA)}</td>
+                <td style={{ padding: "7px" }}>{teamName(m.teamB)}</td>
+                <td style={{ padding: "7px", textAlign: "center" }}>{m.status === "scheduled" ? "" : scoreLabel(m.goalsB, m.pointsB)}</td>
+                <td style={{ padding: "7px", textTransform: "capitalize" }}>{m.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {Array.isArray(lunchWindows) && lunchWindows.length > 0 && (
+        <div style={{ marginTop: 10, fontFamily: "Inter, sans-serif", fontSize: 11.5, color: C.ink, lineHeight: 1.5 }}>
+          <b>Burger sittings:</b> {lunchWindows.map((w) => `${w.from}–${w.to}: ${(w.teams || []).map(teamName).join(", ")}`).join("  •  ")}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ---------- Admin ---------- */
@@ -2743,7 +2792,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
               ⚡ Auto-generate the full schedule
             </div>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>
-              Creates one complete Red round-robin and one complete Green round-robin across three pitches, so every team plays the other five teams in its colour once. <b>Every team receives a staggered {LUNCH_MINUTES}-minute burger break</b>. Burger sittings are kept at 11:30, 12:00 and 12:30, with a maximum of four teams on break at once. Travelling teams are prioritised into the earliest available sittings. No team is double-booked or scheduled in back-to-back slots. Shield finals are played first, followed by Cup finals and presentations. Finalists are only auto-filled when the group placing is genuinely resolved; any tie requiring a coin toss is left for an organiser to decide.
+              Creates one six-team Red group and one six-team Green group across three pitches. <b>Every team gets exactly five group matches</b>, with 18 minutes of play (9 minutes each half), a 2-minute changeover and no back-to-back fixtures. Burger sittings remain at 11:30, 12:00 and 12:30. Group games finish at approximately 13:58, Shield finals are scheduled for 14:10, Cup finals for 14:30 and presentations finish by 15:00. Finals stay hidden until the organiser reviews and publishes them.
             </div>
             <button
               onClick={async () => {
@@ -2766,7 +2815,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                   setSaveError(`Save to the database failed (${r1.error || r2.error || r3.error}). The schedule is showing on THIS screen only and has NOT been saved — reloading or checking on another device will show the old data. Please try again, and if it keeps failing, this needs checking on the Vercel/Turso side.`);
                   return;
                 }
-                logAction(adminName, `Auto-generated the full schedule with staggered 30-minute burger sittings from 11:30 (maximum four teams at once; travelling teams prioritised early) (replaced ${matches.length} existing fixture${matches.length === 1 ? "" : "s"})`);
+                logAction(adminName, `Auto-generated the 20-minute-slot schedule: one Red group + one Green group, five group games per team, three protected burger sittings, hidden finals (replaced ${matches.length} existing fixture${matches.length === 1 ? "" : "s"})`);
               }}
               style={{ width: "100%", background: C.pitch, color: "#fff", border: "none", borderRadius: 8, padding: 11, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
@@ -2783,9 +2832,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
             )}
           </div>
 
+          <AdminFixtureTable matches={matches} teams={teams} lunchWindows={lunchWindows} />
+
           <div style={{ background: "#fff", border: `1px solid ${C.pitch}33`, borderRadius: 12, padding: 12, marginBottom: 14 }}>
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.inkSoft, lineHeight: 1.5, marginBottom: 8 }}>
-              Finals fill in automatically the moment a group's results are complete. If you've edited fixtures directly and think a final should be fillable now, recalculate manually here.
+              Finals pairings are proposed automatically once all group results are complete. They remain hidden until an organiser reviews and publishes them. If you've edited fixtures directly, you can recalculate the proposed pairings here.
             </div>
             {unresolvedQualificationTies(teams, matches).length > 0 && (
               <div style={{ background: "#FFF4E5", border: "1px solid #E7A23B", borderRadius: 8, padding: 10, marginBottom: 10, fontFamily: "Inter, sans-serif", fontSize: 12, color: C.ink, lineHeight: 1.45 }}>
@@ -3043,11 +3094,11 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                         </div>
                         {rows.map((r, i) => {
                           const teamObj = teams.find((t) => t.id === r.id);
-                          const isQualifier = i < 4;
+                          const isQualifier = i < 2;
                           return (
                             <div key={r.id} style={{ display: "grid", gridTemplateColumns: "2fr 0.5fr 0.5fr 0.5fr 0.5fr 0.6fr", padding: "6px 8px", borderTop: `1px solid ${C.pitch}11`, background: isQualifier ? "#f0faf3" : "transparent" }}>
                               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11.5, fontWeight: isQualifier ? 700 : 500, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {isQualifier && <span style={{ color: i < 2 ? C.pitch : C.sliotar, marginRight: 3 }}>{i < 2 ? "🏆" : "🛡️"}</span>}
+                                {isQualifier && <span style={{ color: i === 0 ? C.pitch : C.sliotar, marginRight: 3 }}>{i === 0 ? "🏆" : "🛡️"}</span>}
                                 {teamObj?.name || r.id}
                               </div>
                               <div style={{ textAlign: "center", fontFamily: "Inter, sans-serif", fontSize: 11, color: C.inkSoft }}>{r.played}</div>
@@ -3063,7 +3114,7 @@ function AdminScreen({ teams, clubs, matches, setMatches, orders, setOrders, ann
                   );
                 })}
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.inkSoft, marginTop: 4 }}>
-                  🏆 = Cup Final (1st & 2nd) · 🛡️ = Shield Final (3rd & 4th)
+                  🏆 = Cup finalist (group winner) · 🛡️ = Shield finalist (runner-up)
                 </div>
               </div>
             );
